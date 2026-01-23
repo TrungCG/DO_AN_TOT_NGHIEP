@@ -3,38 +3,42 @@ from . import views
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
-    # path('', views.task_page, name='frontend'),
-    
-    # Xác thực người dùng (Authentication)
+    # Xác thực
     path('signup/', views.SignupView.as_view(), name='signup'),
-    path('login/', views.LoginView.as_view(), name='login'), # Đăng nhập JWT         
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'), # Làm mới token
+    path('login/', views.LoginView.as_view(), name='login'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
-    # Người dùng (Users)
+    # Users
     path('users/', views.UserListView.as_view(), name='user-list'),
     path('users/<int:pk>/', views.UserDetailView.as_view(), name='user-detail'),
 
-    # Dự án (Projects)
+    # Projects
     path('projects/', views.ProjectListView.as_view(), name='project-list'),
     path('projects/<int:pk>/', views.ProjectDetailView.as_view(), name='project-detail'),
-
-    # Quản lý thành viên dự án
     path('projects/<int:pk>/add_member/', views.AddMemberView.as_view(), name='project-add-member'),
     path('projects/<int:pk>/remove_member/', views.RemoveMemberView.as_view(), name='project-remove-member'),
 
-    # Công việc (Tasks)
-    path('projects/<int:pk>/tasks/', views.TaskListView.as_view(), name='task-list'),
-    path('projects/<int:project_pk>/tasks/<int:pk>/', views.TaskDetailView.as_view(), name='task-detail'),
+    # --- CẬP NHẬT URLS TASK ---
+    
+    # 1. Task Dự án (Giữ nguyên)
+    path('projects/<int:pk>/tasks/', views.TaskListView.as_view(), name='project-task-list'),
+    
+    # 2. Task Cá nhân (MỚI)
+    path('my-tasks/', views.PersonalTaskListView.as_view(), name='personal-task-list'),
 
-    # Bình luận (Comments)
+    # 3. Task Detail (Dùng chung cho cả 2 loại, bỏ project_pk ở url)
+    path('tasks/<int:pk>/', views.TaskDetailView.as_view(), name='task-detail'),
+    # --------------------------
+
+    # Comments
     path('projects/<int:project_pk>/tasks/<int:task_pk>/comments/', views.CommentListView.as_view(), name='comment-list'),
     path('projects/<int:project_pk>/tasks/<int:task_pk>/comments/<int:pk>/', views.CommentDetailView.as_view(), name='comment-detail'),
 
-    # Tệp đính kèm (Attachments)
+    # Attachments
     path('projects/<int:project_pk>/tasks/<int:task_pk>/attachments/', views.AttachmentListView.as_view(), name='attachment-list'),
     path('projects/<int:project_pk>/tasks/<int:task_pk>/attachments/<int:pk>/', views.AttachmentDetailView.as_view(), name='attachment-detail'),
 
-    # Nhật ký hoạt động (Activity Log)
+    # Activity Log
     path('projects/<int:project_pk>/activity/', views.ActivityLogProjectView.as_view(), name='activity-project'),
     path('projects/<int:project_pk>/tasks/<int:task_pk>/activity/', views.ActivityLogTaskView.as_view(), name='activity-task'),
 ]

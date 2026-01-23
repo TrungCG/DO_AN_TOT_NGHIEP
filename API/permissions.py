@@ -5,11 +5,6 @@ from .models import Project, Task
 
 # Phân quyền ProjectList 
 class CanViewProjectList(BasePermission):
-    """
-    ListView: 
-    - Admin: xem tất cả, 
-    - Owner hoặc Member: chỉ xem dự án của mình.
-    """
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated
 
@@ -22,11 +17,6 @@ class CanViewProjectList(BasePermission):
 
 # Phân quyền ProjectDetail
 class IsProjectOwnerOrMember(BasePermission):
-    """
-    DetailView:
-    - Owner: full quyền
-    - Member: chỉ xem
-    """
     def has_object_permission(self, request, view, obj):
         if request.user.is_staff:
             return True
@@ -35,13 +25,8 @@ class IsProjectOwnerOrMember(BasePermission):
         return request.user == obj.owner
 
 
-# Phân quyền TaskList
+# Phân quyền TaskList (Dành cho danh sách task trong dự án)
 class CanViewTaskList(BasePermission):
-    """
-    ListView: 
-    - Admin: thấy tất cả,
-    - Owner: hoặc Member: chỉ xem task thuộc project mình.
-    """
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated
 
@@ -49,59 +34,63 @@ class CanViewTaskList(BasePermission):
         user = request.user
         if user.is_staff:
             return Task.objects.filter(project_id=project_pk)
-        return Task.objects.filter(Q(project__id=project_pk,
-            project__members=user) | Q(project__id=project_pk, project__owner=user)).distinct()
+        
+        # Chỉ lấy task thuộc dự án VÀ không phải task cá nhân
+        return Task.objects.filter(
+            Q(project__id=project_pk, project__members=user) | 
+            Q(project__id=project_pk, project__owner=user)
+        ).filter(is_personal=False).distinct()
 
 
-# Phân quyền TaskDetail
+# Phân quyền TaskDetail (Xử lý cả Task cá nhân và Task dự án)
 class IsTaskPermission(BasePermission):
     """
-    DetailView:
-    - Chủ project: full quyền
-    - Member/Assignee: xem + sửa
+    - Task Cá nhân: Chỉ người tạo (created_by) mới có quyền.
+    - Task Dự án: Chủ project full quyền, Member/Assignee xem+sửa.
     """
     def has_object_permission(self, request, view, obj):
         user = request.user
-        if user.is_staff:
-            return True
+        if user.is_staff: return True
 
-        project = obj.project
-        is_owner = user == project.owner
-        is_member = user in project.members.all()
-        is_assignee = user == obj.assignee
+        # --- CASE 1: TASK CÁ NHÂN ---
+        if obj.is_personal:
+            # Chỉ người tạo mới được xem/sửa/xóa
+            return obj.created_by == user
 
-        if request.method in SAFE_METHODS:
-            return is_owner or is_member or is_assignee
-        if request.method in ['PUT', 'PATCH']:
-            return is_owner or is_member or is_assignee
-        if request.method == 'DELETE':
-            return is_owner
+        # --- CASE 2: TASK DỰ ÁN ---
+        if obj.project:
+            project = obj.project
+            is_owner = user == project.owner
+            is_member = user in project.members.all()
+            is_assignee = user == obj.assignee
+
+            if request.method in SAFE_METHODS:
+                return is_owner or is_member or is_assignee
+            if request.method in ['PUT', 'PATCH']:
+                return is_owner or is_member or is_assignee
+            if request.method == 'DELETE':
+                return is_owner # Chỉ chủ dự án mới được xóa task dự án
+        
         return False
 
 
 # Phân quyền Comment/Attachment List
 class CanViewCommentOrAttachmentList(BasePermission):
-    """
-    ListView:
-    - Admin: thấy tất cả,
-    - Owner hoặc Member: chỉ xem của project mình.
-    """
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated
 
 
 # Phân quyền Comment/Attachment Detail
 class IsCommentOrAttachmentOwner(BasePermission):
-    """
-    DetailView:
-    - Member dự án: được xem
-    - Tác giả/uploader: được sửa/xóa
-    - Chủ dự án: được xóa
-    """
     def has_object_permission(self, request, view, obj):
         user = request.user
         if user.is_staff:
             return True
+        
+        # Nếu task cá nhân, chỉ chủ task được xử lý
+        if obj.task.is_personal:
+            return obj.task.created_by == user
+
         project = obj.task.project
         is_owner = user == project.owner
         is_member = user in project.members.all()
@@ -116,18 +105,12 @@ class IsCommentOrAttachmentOwner(BasePermission):
 
 # Phân quyền ActivityLog View
 class CanViewActivityLog(BasePermission):
-    """
-    Chỉ owner, member, hoặc admin được xem.
-    """
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated
 
 
 # Phân quyền quản lý thành viên dự án
 class IsProjectOwnerOnly(BasePermission):
-    """
-    Chỉ chủ dự án (owner) mới có quyền thêm hoặc xóa thành viên.
-    """
     def has_object_permission(self, request, view, obj):
         if request.user.is_staff:
             return True

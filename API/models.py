@@ -1,12 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.conf import settings # Best practice: Dùng settings.AUTH_USER_MODEL
+from django.conf import settings 
 
 # MODEL USER (người dùng)
 class User(AbstractUser):
-    # avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name="Ảnh đại diện")
-    # bio = models.TextField(null=True, blank=True, verbose_name="Giới thiệu")
-    
     def __str__(self):
         return self.username
 
@@ -39,13 +36,25 @@ class Task(models.Model):
     status = models.CharField(max_length=4, choices=Status.choices, default=Status.TODO, verbose_name="Trạng thái")
     priority = models.CharField(max_length=4, choices=Priority.choices, default=Priority.MEDIUM, verbose_name="Độ ưu tiên")
     due_date = models.DateTimeField(null=True, blank=True, verbose_name="Ngày hết hạn")
-    project = models.ForeignKey(Project, related_name='tasks', on_delete=models.CASCADE, verbose_name="Dự án")
+    
+    # --- CẬP NHẬT QUAN TRỌNG ---
+    # 1. project cho phép null (cho task cá nhân)
+    project = models.ForeignKey(Project, related_name='tasks', on_delete=models.CASCADE, verbose_name="Dự án", null=True, blank=True)
+    
+    # 2. Cờ đánh dấu task cá nhân
+    is_personal = models.BooleanField(default=False, verbose_name="Là việc cá nhân")
+
+    # 3. Người tạo (Bắt buộc để quản lý quyền task cá nhân)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='created_tasks', on_delete=models.CASCADE, verbose_name="Người tạo")
+    # ---------------------------
+
     assignee = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='assigned_tasks', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Người được giao")    
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
     
     def __str__(self):
-        return self.title
+        type_str = "Personal" if self.is_personal else f"Project: {self.project.name}"
+        return f"[{type_str}] {self.title}"
 
 # MODEL COMMENT (các bình luận)
 class Comment(models.Model):

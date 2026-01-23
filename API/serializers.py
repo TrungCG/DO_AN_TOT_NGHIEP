@@ -34,7 +34,6 @@ class SignupSerializer(serializers.ModelSerializer):
         return user
 
 class UserSerializer(serializers.ModelSerializer):
-    # Serializer để hiển thị thông tin User một cách an toàn.
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
@@ -47,8 +46,6 @@ class UserBasicSerializer(serializers.ModelSerializer):
 class ProjectSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
     members = UserSerializer(many=True, read_only=True)
-    
-    # CẢI TIẾN: Dùng trường riêng để nhận danh sách ID của members khi ghi (POST/PUT)
     member_ids = serializers.PrimaryKeyRelatedField(
         many=True, write_only=True, queryset=User.objects.all(), source='members', required=False
     )
@@ -68,9 +65,18 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = [
             'id', 'title', 'description', 'status', 'priority', 'due_date', 
-            'project', 'assignee', 'assignee_id', 'created_at', 'updated_at'
+            'project', 'assignee', 'assignee_id', 
+            'is_personal', 'created_by', # Thêm field mới
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['project']
+        # Client KHÔNG ĐƯỢC phép tự gửi project hay is_personal. 
+        # Việc này do View quyết định để đảm bảo an toàn tuyệt đối.
+        read_only_fields = ['project', 'is_personal', 'created_by']
+
+    def validate(self, data):
+        # Logic chính nằm ở View để ép buộc dữ liệu, 
+        # nhưng giữ hàm này để mở rộng validation nếu cần.
+        return data
 
 class CommentSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)

@@ -41,4 +41,7 @@ urlpatterns = [
     # Activity Log
     path('projects/<int:project_pk>/activity/', views.ActivityLogProjectView.as_view(), name='activity-project'),
     path('projects/<int:project_pk>/tasks/<int:task_pk>/activity/', views.ActivityLogTaskView.as_view(), name='activity-task'),
+
+    # Google Login
+    path('google-login/', views.GoogleLoginView.as_view(), name='google-login'),
 ]

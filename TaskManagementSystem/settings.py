@@ -90,6 +90,7 @@ STATICFILES_DIRS = [
 ]
 
 
+GOOGLE_CLIENT_ID = "671240491329-i18ua153gt5tbkcfsfqtlhemd529mc0k.apps.googleusercontent.com"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

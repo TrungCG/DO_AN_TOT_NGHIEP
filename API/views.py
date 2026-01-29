@@ -10,8 +10,15 @@ from django.shortcuts import render
 
 from .models import User, Project, Task, Comment, Attachment, ActivityLog
 from .serializers import (
-    SignupSerializer, UserSerializer, ProjectSerializer, UserBasicSerializer,
-    TaskSerializer, CommentSerializer, AttachmentSerializer, ActivityLogSerializer
+    SignupSerializer, 
+    UserSerializer, 
+    ProjectSerializer, 
+    UserBasicSerializer,
+    TaskSerializer, 
+    CommentSerializer, 
+    AttachmentSerializer, 
+    ActivityLogSerializer,
+    GoogleLoginSerializer,
 )
 from .permissions import (
     CanViewProjectList,
@@ -24,6 +31,12 @@ from .permissions import (
     IsProjectOwnerOnly,
 )
 from .filters import TaskFilter, ProjectFilter, UserFilter
+
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.conf import settings
+import uuid
 
 
 def create_activity_log(user, action_description, project=None, task=None):
@@ -449,3 +462,94 @@ class ActivityLogTaskView(APIView):
             return Response({"error": "Công việc không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
         logs = ActivityLog.objects.filter(task=task).order_by('-timestamp')
         return Response(ActivityLogSerializer(logs, many=True).data)
+    
+    
+# LOGIN GOOGLE
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = GoogleLoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        token = serializer.validated_data['id_token']
+        GOOGLE_CLIENT_ID = settings.GOOGLE_CLIENT_ID
+
+        try:
+            # 1. Verify token với Google
+            idinfo = id_token.verify_oauth2_token(
+                token,
+                google_requests.Request(),
+                GOOGLE_CLIENT_ID
+            )
+
+            # 2. Kiểm tra email đã được xác thực chưa
+            if not idinfo.get('email_verified'):
+                return Response(
+                    {"error": "Email Google chưa được xác thực."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # 3. Lấy thông tin user từ Google
+            email = idinfo.get('email')
+            first_name = idinfo.get('given_name', '')
+            last_name = idinfo.get('family_name', '')
+
+            if not email:
+                return Response(
+                    {"error": "Không lấy được email từ Google."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # 4. Tạo hoặc lấy user theo email
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    'username': f"{email.split('@')[0]}_{uuid.uuid4().hex[:4]}",
+                    'first_name': first_name,
+                    'last_name': last_name,
+                }
+            )
+
+            # Nếu user đã tồn tại → cập nhật thông tin
+            if not created:
+                updated = False
+                if user.first_name != first_name:
+                    user.first_name = first_name
+                    updated = True
+                if user.last_name != last_name:
+                    user.last_name = last_name
+                    updated = True
+                if updated:
+                    user.save()
+
+            # 5. Nếu là user Google mới → set unusable password
+            if created:
+                user.set_unusable_password()
+                user.save()
+
+                # Tạo project cá nhân cho user mới (tránh trùng)
+                Project.objects.get_or_create(
+                    owner=user,
+                    name__startswith="Việc cá nhân",
+                    defaults={
+                        'name': f"Việc cá nhân của {user.username}",
+                        'description': "Không gian quản lý công việc riêng tư"
+                    }
+                )
+
+            # 6. Tạo JWT token
+            refresh = RefreshToken.for_user(user)
+
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+
+        except ValueError:
+            return Response(
+                {"error": "Token Google không hợp lệ hoặc đã hết hạn."},
+                status=status.HTTP_400_BAD_REQUEST
+            )

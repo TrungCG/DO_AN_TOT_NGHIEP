@@ -1,3 +1,4 @@
+import re
 from rest_framework import serializers
 from .models import User, Project, Task, Comment, Attachment, ActivityLog
 from rest_framework.validators import UniqueValidator
@@ -100,3 +101,8 @@ class ActivityLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = ActivityLog
         fields = ['id', 'action_description', 'actor', 'project', 'task', 'timestamp']
+        
+
+# login google
+class GoogleLoginSerializer(serializers.Serializer):
+    id_token = serializers.CharField(required=True)

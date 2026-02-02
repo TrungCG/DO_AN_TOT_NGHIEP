@@ -74,12 +74,6 @@ class IsTaskPermission(BasePermission):
         return False
 
 
-# Phân quyền Comment/Attachment List
-class CanViewCommentOrAttachmentList(BasePermission):
-    def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated
-
-
 # Phân quyền Comment/Attachment Detail
 class IsCommentOrAttachmentOwner(BasePermission):
     def has_object_permission(self, request, view, obj):

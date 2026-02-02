@@ -30,17 +30,18 @@ urlpatterns = [
     path('tasks/<int:pk>/', views.TaskDetailView.as_view(), name='task-detail'),
     # --------------------------
 
-    # Comments
-    path('projects/<int:project_pk>/tasks/<int:task_pk>/comments/', views.CommentListView.as_view(), name='comment-list'),
-    path('projects/<int:project_pk>/tasks/<int:task_pk>/comments/<int:pk>/', views.CommentDetailView.as_view(), name='comment-detail'),
+    # Comments (hoạt động với cả Task dự án và Task cá nhân)
+    path('tasks/<int:task_pk>/comments/', views.CommentListView.as_view(), name='task-comment-list'),
+    path('tasks/<int:task_pk>/comments/<int:pk>/', views.CommentDetailView.as_view(), name='task-comment-detail'),
 
-    # Attachments
-    path('projects/<int:project_pk>/tasks/<int:task_pk>/attachments/', views.AttachmentListView.as_view(), name='attachment-list'),
-    path('projects/<int:project_pk>/tasks/<int:task_pk>/attachments/<int:pk>/', views.AttachmentDetailView.as_view(), name='attachment-detail'),
+    # Attachments (hoạt động với cả Task dự án và Task cá nhân)
+    path('tasks/<int:task_pk>/attachments/', views.AttachmentListView.as_view(), name='task-attachment-list'),
+    path('tasks/<int:task_pk>/attachments/<int:pk>/', views.AttachmentDetailView.as_view(), name='task-attachment-detail'),
 
-    # Activity Log
-    path('projects/<int:project_pk>/activity/', views.ActivityLogProjectView.as_view(), name='activity-project'),
-    path('projects/<int:project_pk>/tasks/<int:task_pk>/activity/', views.ActivityLogTaskView.as_view(), name='activity-task'),
+    # Activity Logs
+    path('projects/<int:pk>/activity/', views.ActivityLogProjectView.as_view(), name='project-activity-log'),
+    path('tasks/<int:task_pk>/activity/', views.ActivityLogTaskView.as_view(), name='task-activity-log'),
+
 
     # Google Login
     path('google-login/', views.GoogleLoginView.as_view(), name='google-login'),

@@ -332,21 +332,23 @@ class TaskDetailView(APIView):
 
 # COMMENT LIST / CREATE
 class CommentListView(APIView):
-    permission_classes = [IsAuthenticated, CanViewCommentOrAttachmentList]
-    def get(self, request, project_pk, task_pk):
+    permission_classes = [IsAuthenticated, IsTaskPermission]
+    def get(self, request, task_pk):
         try:
-            task = Task.objects.get(pk=task_pk, project_id=project_pk)
+            task = Task.objects.get(pk=task_pk)
         except Task.DoesNotExist:
             return Response({"error": "Công việc không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(request, task)
         comments = Comment.objects.filter(task=task)
         serializer = CommentSerializer(comments, many=True)
         return Response(serializer.data)
 
-    def post(self, request, project_pk, task_pk):
+    def post(self, request, task_pk):
         try:
-            task = Task.objects.get(pk=task_pk, project_id=project_pk)
+            task = Task.objects.get(pk=task_pk)
         except Task.DoesNotExist:
             return Response({"error": "Công việc không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(request, task)
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():
             comment = serializer.save(author=request.user, task=task)
@@ -358,7 +360,7 @@ class CommentListView(APIView):
 # COMMENT DETAIL
 class CommentDetailView(APIView):
     permission_classes = [IsAuthenticated, IsCommentOrAttachmentOwner]
-    def get(self, request, project_pk, task_pk, pk):
+    def get(self, request, task_pk, pk):
         try:
             comment = Comment.objects.get(pk=pk, task__pk=task_pk)
         except Comment.DoesNotExist:
@@ -367,7 +369,7 @@ class CommentDetailView(APIView):
         serializer = CommentSerializer(comment)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-    def put(self, request, project_pk, task_pk, pk):
+    def put(self, request, task_pk, pk):
         try:
             comment = Comment.objects.get(pk=pk, task__pk=task_pk)
         except Comment.DoesNotExist:
@@ -379,7 +381,7 @@ class CommentDetailView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, project_pk, task_pk, pk):
+    def delete(self, request, task_pk, pk):
         try:
             comment = Comment.objects.get(pk=pk, task__pk=task_pk)
         except Comment.DoesNotExist:
@@ -391,22 +393,24 @@ class CommentDetailView(APIView):
 
 # ATTACHMENT LIST / CREATE
 class AttachmentListView(APIView):
-    permission_classes = [IsAuthenticated, CanViewCommentOrAttachmentList]
+    permission_classes = [IsAuthenticated, IsTaskPermission]
     parser_classes = [MultiPartParser, FormParser]
-    def get(self, request, project_pk, task_pk):
+    def get(self, request, task_pk):
         try:
-            task = Task.objects.get(pk=task_pk, project_id=project_pk)
+            task = Task.objects.get(pk=task_pk)
         except Task.DoesNotExist:
             return Response({"error": "Công việc không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(request, task)
         attachments = Attachment.objects.filter(task=task)
         serializer = AttachmentSerializer(attachments, many=True)
         return Response(serializer.data)
     
-    def post(self, request, project_pk, task_pk):
+    def post(self, request, task_pk):
         try:
-            task = Task.objects.get(pk=task_pk, project_id=project_pk)
+            task = Task.objects.get(pk=task_pk)
         except Task.DoesNotExist:
             return Response({"error": "Công việc không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(request, task)
         serializer = AttachmentSerializer(data=request.data)
         if serializer.is_valid():
             attachment = serializer.save(uploader=request.user, task=task)
@@ -418,7 +422,7 @@ class AttachmentListView(APIView):
 # ATTACHMENT DETAIL
 class AttachmentDetailView(APIView):
     permission_classes = [IsAuthenticated, IsCommentOrAttachmentOwner]
-    def get(self, request, project_pk, task_pk, pk):
+    def get(self, request, task_pk, pk):
         try:
             attachment = Attachment.objects.get(pk=pk, task__pk=task_pk)
         except Attachment.DoesNotExist:
@@ -427,7 +431,7 @@ class AttachmentDetailView(APIView):
         serializer = AttachmentSerializer(attachment)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-    def delete(self, request, project_pk, task_pk, pk):
+    def delete(self, request, task_pk, pk):
         try:
             attachment = Attachment.objects.get(pk=pk, task__pk=task_pk)
         except Attachment.DoesNotExist:
@@ -443,23 +447,25 @@ class AttachmentDetailView(APIView):
 
 # ACTIVITY LOG
 class ActivityLogProjectView(APIView):
-    permission_classes = [IsAuthenticated, CanViewActivityLog]
-    def get(self, request, project_pk):
+    permission_classes = [IsAuthenticated, IsProjectOwnerOrMember]
+    def get(self, request, pk):
         try:
-            project = Project.objects.get(pk=project_pk)
+            project = Project.objects.get(pk=pk)
         except Project.DoesNotExist:
             return Response({"error": "Dự án không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(request, project)
         logs = ActivityLog.objects.filter(project=project).order_by('-timestamp')
         return Response(ActivityLogSerializer(logs, many=True).data)
 
 
 class ActivityLogTaskView(APIView):
-    permission_classes = [IsAuthenticated, CanViewActivityLog]
-    def get(self, request, project_pk, task_pk):
+    permission_classes = [IsAuthenticated, IsTaskPermission]
+    def get(self, request, task_pk):
         try:
-            task = Task.objects.get(pk=task_pk, project_id=project_pk)
+            task = Task.objects.get(pk=task_pk)
         except Task.DoesNotExist:
             return Response({"error": "Công việc không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(request, task)
         logs = ActivityLog.objects.filter(task=task).order_by('-timestamp')
         return Response(ActivityLogSerializer(logs, many=True).data)
     
@@ -528,16 +534,6 @@ class GoogleLoginView(APIView):
             if created:
                 user.set_unusable_password()
                 user.save()
-
-                # Tạo project cá nhân cho user mới (tránh trùng)
-                Project.objects.get_or_create(
-                    owner=user,
-                    name__startswith="Việc cá nhân",
-                    defaults={
-                        'name': f"Việc cá nhân của {user.username}",
-                        'description': "Không gian quản lý công việc riêng tư"
-                    }
-                )
 
             # 6. Tạo JWT token
             refresh = RefreshToken.for_user(user)

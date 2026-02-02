@@ -48,4 +48,9 @@ urlpatterns = [
 
     # Google Login
     path('google-login/', views.GoogleLoginView.as_view(), name='google-login'),
+
+    # Notifications
+    path('notifications/', views.NotificationListView.as_view(), name='notification-list'),
+    path('notifications/<int:pk>/read/', views.NotificationMarkAsReadView.as_view(), name='notification-mark-read'),
+    path('notifications/read-all/', views.NotificationMarkAllAsReadView.as_view(), name='notification-mark-all-read'),
 ]

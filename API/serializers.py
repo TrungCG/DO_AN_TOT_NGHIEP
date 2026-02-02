@@ -1,6 +1,6 @@
 import re
 from rest_framework import serializers
-from .models import User, Project, Task, Comment, Attachment, ActivityLog
+from .models import User, Project, Task, Comment, Attachment, ActivityLog, Notification
 from rest_framework.validators import UniqueValidator
 
 class SignupSerializer(serializers.ModelSerializer):
@@ -67,17 +67,42 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'description', 'status', 'priority', 'due_date', 
             'project', 'assignee', 'assignee_id', 
-            'is_personal', 'created_by', # Thêm field mới
+            'is_personal', 'created_by',
             'created_at', 'updated_at'
         ]
-        # Client KHÔNG ĐƯỢC phép tự gửi project hay is_personal. 
-        # Việc này do View quyết định để đảm bảo an toàn tuyệt đối.
         read_only_fields = ['project', 'is_personal', 'created_by']
 
     def validate(self, data):
-        # Logic chính nằm ở View để ép buộc dữ liệu, 
-        # nhưng giữ hàm này để mở rộng validation nếu cần.
         return data
+
+    def _send_assignment_notification(self, instance, old_assignee):
+        """Gửi thông báo khi assignee thay đổi."""
+        from .views import create_notification
+        
+        new_assignee = instance.assignee
+        user = self.context.get('request').user if self.context.get('request') else None
+        
+        # Chỉ gửi nếu assignee thay đổi và có assignee mới
+        if new_assignee and new_assignee != old_assignee and user:
+            project_name = instance.project.name if instance.project else "một dự án"
+            create_notification(
+                recipient=new_assignee,
+                title="Bạn được giao một công việc mới",
+                message=f"Bạn vừa được {user.username} giao công việc '{instance.title}' trong dự án '{project_name}'.",
+                project=instance.project,
+                task=instance
+            )
+
+    def create(self, validated_data):
+        instance = super().create(validated_data)
+        self._send_assignment_notification(instance, None)
+        return instance
+
+    def update(self, instance, validated_data):
+        old_assignee = instance.assignee
+        updated_instance = super().update(instance, validated_data)
+        self._send_assignment_notification(updated_instance, old_assignee)
+        return updated_instance
 
 class CommentSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
@@ -129,6 +154,17 @@ class ResetPasswordSerializer(serializers.Serializer):
         if data['new_password'] != data['confirm_password']:
             raise serializers.ValidationError({"confirm_password": "Mật khẩu xác nhận không khớp."})
         return data
+
+
+# Notification Serializer
+class NotificationSerializer(serializers.ModelSerializer):
+    project_name = serializers.CharField(source='project.name', read_only=True, allow_null=True)
+    task_title = serializers.CharField(source='task.title', read_only=True, allow_null=True)
+    
+    class Meta:
+        model = Notification
+        fields = ['id', 'title', 'message', 'project', 'project_name', 'task', 'task_title', 'is_read', 'created_at']
+        read_only_fields = ['id', 'project_name', 'task_title', 'created_at']
 
 
 # login google

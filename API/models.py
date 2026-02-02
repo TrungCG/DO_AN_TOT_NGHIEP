@@ -100,3 +100,23 @@ class PasswordResetToken(models.Model):
     
     def __str__(self):
         return f'Reset token for {self.user.username}'
+
+# MODEL NOTIFICATION (Thông báo)
+class Notification(models.Model):
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='notifications', on_delete=models.CASCADE, verbose_name="Người nhận")
+    title = models.CharField(max_length=255, verbose_name="Tiêu đề")
+    message = models.TextField(verbose_name="Nội dung")
+    
+    # Context (Optional)
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='notifications', verbose_name="Dự án")
+    task = models.ForeignKey(Task, null=True, blank=True, on_delete=models.CASCADE, related_name='notifications', verbose_name="Công việc")
+    
+    # Status
+    is_read = models.BooleanField(default=False, verbose_name="Đã đọc")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f'Notification for {self.recipient.username}: {self.title}'

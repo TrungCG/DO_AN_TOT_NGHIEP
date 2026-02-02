@@ -13,7 +13,7 @@ from datetime import timedelta
 import os
 import uuid
 
-from .models import User, Project, Task, Comment, Attachment, ActivityLog, PasswordResetToken
+from .models import User, Project, Task, Comment, Attachment, ActivityLog, PasswordResetToken, Notification
 from .serializers import (
     SignupSerializer, 
     UserSerializer, 
@@ -27,6 +27,7 @@ from .serializers import (
     SetPasswordSerializer,
     ForgotPasswordSerializer,
     ResetPasswordSerializer,
+    NotificationSerializer,
 )
 from .permissions import (
     CanViewProjectList,
@@ -49,6 +50,20 @@ def create_activity_log(user, action_description, project=None, task=None):
     ActivityLog.objects.create(
         actor=user,
         action_description=action_description,
+        project=project,
+        task=task
+    )
+
+
+def create_notification(recipient, title, message, project=None, task=None):
+    """
+    Helper function để tạo Notification
+    Tránh tạo ở nhiều nơi, tập trung logic ở một chỗ
+    """
+    Notification.objects.create(
+        recipient=recipient,
+        title=title,
+        message=message,
         project=project,
         task=task
     )
@@ -337,6 +352,15 @@ class AddMemberView(APIView):
               
         project.members.add(user)
         create_activity_log(request.user, f"Thêm thành viên '{user.username}' vào dự án '{project.name}'", project=project)
+        
+        # Tạo thông báo cho user được thêm vào dự án
+        create_notification(
+            recipient=user,
+            title="Bạn đã được thêm vào dự án mới",
+            message=f"Bạn vừa được {request.user.username} thêm vào dự án '{project.name}'.",
+            project=project
+        )
+        
         return Response({"message": f"Đã thêm {user.username} vào dự án."}, status=status.HTTP_200_OK)
 
 
@@ -388,7 +412,7 @@ class TaskListView(APIView):
         if request.user != project.owner and request.user not in project.members.all():
              return Response({"error": "Bạn không có quyền tạo task trong dự án này."}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = TaskSerializer(data=request.data)
+        serializer = TaskSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             # --- ÉP LUẬT: TASK DỰ ÁN ---
             task = serializer.save(
@@ -416,7 +440,7 @@ class PersonalTaskListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        serializer = TaskSerializer(data=request.data)
+        serializer = TaskSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             # --- ÉP LUẬT: TASK CÁ NHÂN ---
             task = serializer.save(
@@ -450,7 +474,7 @@ class TaskDetailView(APIView):
         except Task.DoesNotExist:
             raise NotFound("Công việc không tồn tại.")
         self.check_object_permissions(request, task)
-        serializer = TaskSerializer(task, data=request.data)
+        serializer = TaskSerializer(task, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             if not task.is_personal:
@@ -464,7 +488,7 @@ class TaskDetailView(APIView):
         except Task.DoesNotExist:
             raise NotFound("Công việc không tồn tại.")
         self.check_object_permissions(request, task)
-        serializer = TaskSerializer(task, data=request.data, partial=True)
+        serializer = TaskSerializer(task, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             if not task.is_personal:
@@ -509,6 +533,33 @@ class CommentListView(APIView):
         if serializer.is_valid():
             comment = serializer.save(author=request.user, task=task)
             create_activity_log(request.user, f"Thêm bình luận vào '{task.title}'", project=task.project, task=task)
+            
+            # Tối ưu: Dùng set để tracking người nhận notification (tự động loại bỏ trùng lặp)
+            recipients_to_notify = set()
+            
+            # Thêm assignee vào danh sách nhận (nếu không phải người bình luận)
+            if task.assignee and task.assignee != request.user:
+                recipients_to_notify.add(task.assignee)
+            
+            # Thêm người tạo task vào danh sách nhận (nếu không phải người bình luận)
+            if task.created_by and task.created_by != request.user:
+                recipients_to_notify.add(task.created_by)
+            
+            # Gửi thông báo cho tất cả người trong danh sách (tránh lặp code)
+            if recipients_to_notify:
+                comment_preview = comment.body[:50] + ("..." if len(comment.body) > 50 else "")
+                title = f"Bình luận mới trong công việc '{task.title}'"
+                message = f"{request.user.username} đã bình luận: \"{comment_preview}\""
+                
+                for recipient in recipients_to_notify:
+                    create_notification(
+                        recipient=recipient,
+                        title=title,
+                        message=message,
+                        project=task.project,
+                        task=task
+                    )
+            
             return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -705,3 +756,59 @@ class GoogleLoginView(APIView):
                 {"error": "Token Google không hợp lệ hoặc đã hết hạn."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+# NOTIFICATION LIST
+class NotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        # Lấy tất cả notification của user, order by created_at desc
+        notifications = Notification.objects.filter(recipient=request.user).order_by('-created_at')
+        serializer = NotificationSerializer(notifications, many=True)
+        
+        # Trả về cùng lúc số lượng chưa đọc
+        unread_count = notifications.filter(is_read=False).count()
+        
+        return Response({
+            'unread_count': unread_count,
+            'notifications': serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+# NOTIFICATION MARK AS READ
+class NotificationMarkAsReadView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, pk):
+        try:
+            notification = Notification.objects.get(pk=pk, recipient=request.user)
+        except Notification.DoesNotExist:
+            return Response(
+                {"error": "Thông báo không tồn tại."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        notification.is_read = True
+        notification.save()
+        
+        return Response(
+            {"message": "Thông báo đã được đánh dấu là đã đọc."},
+            status=status.HTTP_200_OK
+        )
+
+
+# NOTIFICATION MARK ALL AS READ
+class NotificationMarkAllAsReadView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        # Đánh dấu tất cả notification của user là đã đọc
+        updated_count = Notification.objects.filter(
+            recipient=request.user, 
+            is_read=False
+        ).update(is_read=True)
+        
+        return Response(
+            {"message": f"Đã đánh dấu {updated_count} thông báo là đã đọc."},
+            status=status.HTTP_200_OK
+        )

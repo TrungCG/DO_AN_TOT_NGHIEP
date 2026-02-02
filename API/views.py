@@ -7,8 +7,13 @@ from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.parsers import MultiPartParser, FormParser
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import render
+from django.core.mail import send_mail
+from django.utils import timezone
+from datetime import timedelta
+import os
+import uuid
 
-from .models import User, Project, Task, Comment, Attachment, ActivityLog
+from .models import User, Project, Task, Comment, Attachment, ActivityLog, PasswordResetToken
 from .serializers import (
     SignupSerializer, 
     UserSerializer, 
@@ -19,13 +24,15 @@ from .serializers import (
     AttachmentSerializer, 
     ActivityLogSerializer,
     GoogleLoginSerializer,
+    SetPasswordSerializer,
+    ForgotPasswordSerializer,
+    ResetPasswordSerializer,
 )
 from .permissions import (
     CanViewProjectList,
     IsProjectOwnerOrMember,
     CanViewTaskList,
     IsTaskPermission,
-    CanViewCommentOrAttachmentList,
     IsCommentOrAttachmentOwner,
     CanViewActivityLog,
     IsProjectOwnerOnly,
@@ -36,7 +43,6 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
-import uuid
 
 
 def create_activity_log(user, action_description, project=None, task=None):
@@ -62,6 +68,156 @@ class SignupView(APIView):
 # LOGIN
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
+
+
+# SET PASSWORD (cho user Google hoặc user muốn set password lần đầu)
+class SetPasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = SetPasswordSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Kiểm tra xem user đã có mật khẩu chưa
+        if request.user.has_usable_password():
+            return Response(
+                {"error": "Tài khoản của bạn đã có mật khẩu. Nếu muốn đổi mật khẩu, vui lòng sử dụng chức năng 'Đổi mật khẩu'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Set mật khẩu mới
+        request.user.set_password(serializer.validated_data['new_password'])
+        request.user.save()
+        
+        return Response(
+            {"message": "Mật khẩu đã được thiết lập thành công. Bạn có thể đăng nhập bằng username/email và mật khẩu này."},
+            status=status.HTTP_200_OK
+        )
+
+
+# FORGOT PASSWORD (Bước 1: User nhập email)
+class ForgotPasswordView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        email = serializer.validated_data['email']
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Trả về thông báo chung để tránh leak thông tin user
+            return Response(
+                {"message": "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được email hướng dẫn reset mật khẩu."},
+                status=status.HTTP_200_OK
+            )
+        
+        # ❗ CHẶN USER GOOGLE CHƯA CÓ PASSWORD
+        if not user.has_usable_password():
+            return Response(
+                {
+                    "error": (
+                        "Tài khoản này đăng ký bằng Google. "
+                        "Vui lòng đăng nhập bằng Google hoặc thiết lập mật khẩu trước."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Xóa token cũ (nếu có) để tránh spam
+        PasswordResetToken.objects.filter(user=user, is_used=False).delete()
+        
+        # Tạo token mới với hết hạn 24 giờ
+        expires_at = timezone.now() + timedelta(hours=24)
+        reset_token = PasswordResetToken.objects.create(
+            user=user,
+            expires_at=expires_at
+        )
+        
+        # Lấy Frontend URL từ settings (đã config trong .env)
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        reset_link = f"{frontend_url}/reset-password?token={reset_token.token}"
+        
+        subject = "Yêu cầu Reset Mật khẩu"
+        message = f"""
+        Xin chào {user.first_name or user.username},
+        
+        Bạn đã yêu cầu reset mật khẩu cho tài khoản của mình.
+        Click vào link dưới đây để set mật khẩu mới (link sẽ hết hạn sau 24 giờ):
+        
+        {reset_link}
+        
+        Nếu bạn không yêu cầu này, vui lòng bỏ qua email này.
+        
+        Best regards,
+        Task Management System
+        """
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                'noreply@taskmanagementsystem.com',
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Email sending error: {str(e)}")
+            return Response(
+                {"error": "Không thể gửi email. Vui lòng thử lại sau."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        return Response(
+            {"message": "Email reset mật khẩu đã được gửi. Vui lòng kiểm tra email của bạn."},
+            status=status.HTTP_200_OK
+        )
+
+
+# RESET PASSWORD (Bước 2: User set password mới với token)
+class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        token = serializer.validated_data['token']
+        new_password = serializer.validated_data['new_password']
+        
+        try:
+            reset_token = PasswordResetToken.objects.get(token=token, is_used=False)
+        except PasswordResetToken.DoesNotExist:
+            return Response(
+                {"error": "Token không hợp lệ hoặc đã hết hạn."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Kiểm tra token đã hết hạn chưa
+        if reset_token.expires_at < timezone.now():
+            return Response(
+                {"error": "Token đã hết hạn. Vui lòng yêu cầu reset mật khẩu mới."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Set mật khẩu mới
+        user = reset_token.user
+        user.set_password(new_password)
+        user.save()
+        
+        # Đánh dấu token đã sử dụng
+        reset_token.is_used = True
+        reset_token.save()
+        
+        return Response(
+            {"message": "Mật khẩu đã được reset thành công. Bạn có thể đăng nhập với mật khẩu mới."},
+            status=status.HTTP_200_OK
+        )
 
 
 # USER LIST

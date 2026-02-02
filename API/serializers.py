@@ -103,6 +103,34 @@ class ActivityLogSerializer(serializers.ModelSerializer):
         fields = ['id', 'action_description', 'actor', 'project', 'task', 'timestamp']
         
 
+# Set Password (cho user Google hoặc các user muốn set password)
+class SetPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True, required=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, required=True, min_length=8)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({"confirm_password": "Mật khẩu xác nhận không khớp."})
+        return data
+
+
+# Forgot Password (Bước 1: User nhập email)
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+# Reset Password (Bước 2: User set password mới với token)
+class ResetPasswordSerializer(serializers.Serializer):
+    token = serializers.CharField(required=True)
+    new_password = serializers.CharField(write_only=True, required=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, required=True, min_length=8)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({"confirm_password": "Mật khẩu xác nhận không khớp."})
+        return data
+
+
 # login google
 class GoogleLoginSerializer(serializers.Serializer):
     id_token = serializers.CharField(required=True)

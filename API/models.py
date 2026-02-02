@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.conf import settings 
+from django.conf import settings
+import uuid
 
 # MODEL USER (người dùng)
 class User(AbstractUser):
@@ -88,3 +89,14 @@ class ActivityLog(models.Model):
    
     def __str__(self):
         return f'{self.actor.username} {self.action_description} at {self.timestamp.strftime("%Y-%m-%d %H:%M")}'
+
+# MODEL PASSWORD RESET TOKEN (Reset mật khẩu)
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='reset_tokens', on_delete=models.CASCADE, verbose_name="Người dùng")
+    token = models.CharField(max_length=100, unique=True, default=uuid.uuid4, verbose_name="Token")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    expires_at = models.DateTimeField(verbose_name="Hết hạn lúc")
+    is_used = models.BooleanField(default=False, verbose_name="Đã sử dụng")
+    
+    def __str__(self):
+        return f'Reset token for {self.user.username}'

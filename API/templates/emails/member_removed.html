@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #6c757d; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f8f9fa; padding: 20px; border: 1px solid #ddd; }
+        .info-box { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .info-box table { width: 100%; }
+        .info-box td { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .info-box td:first-child { font-weight: bold; color: #666; width: 40%; }
+        .footer { text-align: center; padding: 15px; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📤 Bạn Đã Bị Xóa Khỏi Dự Án</h1>
+        </div>
+        <div class="content">
+            <p>Xin chào <strong>{{ removed_user.username }}</strong>,</p>
+            <p><strong>{{ remover.username }}</strong> đã xóa bạn khỏi dự án:</p>
+            
+            <div class="info-box">
+                <table>
+                    <tr>
+                        <td>Tên dự án:</td>
+                        <td><strong>{{ project.name }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Người xóa:</td>
+                        <td>{{ remover.username }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <p>Nếu bạn cho rằng đây là lỗi, vui lòng liên hệ với quản lý dự án.</p>
+        </div>
+        <div class="footer">
+            <p>Email này được gửi tự động từ Hệ thống Quản lý Công việc</p>
+        </div>
+    </div>
+</body>
+</html>

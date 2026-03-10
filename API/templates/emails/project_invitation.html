@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #198754; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f8f9fa; padding: 20px; border: 1px solid #ddd; }
+        .project-info { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .project-info table { width: 100%; }
+        .project-info td { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .project-info td:first-child { font-weight: bold; color: #666; width: 40%; }
+        .footer { text-align: center; padding: 15px; color: #666; font-size: 12px; }
+        .highlight { color: #198754; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Bạn Đã Được Thêm Vào Dự Án Mới</h1>
+        </div>
+        <div class="content">
+            <p>Xin chào <strong>{{ invitee.username }}</strong>,</p>
+            <p><span class="highlight">{{ inviter.username }}</span> đã thêm bạn vào dự án:</p>
+            
+            <div class="project-info">
+                <table>
+                    <tr>
+                        <td>Tên dự án:</td>
+                        <td><strong>{{ project.name }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Mô tả:</td>
+                        <td>{{ project.description|default:"Không có mô tả" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Người thêm:</td>
+                        <td>{{ inviter.username }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <p>Vui lòng đăng nhập hệ thống để xem chi tiết dự án và bắt đầu làm việc cùng đội ngũ.</p>
+        </div>
+        <div class="footer">
+            <p>Email này được gửi tự động từ Hệ thống Quản lý Công việc</p>
+        </div>
+    </div>
+</body>
+</html>

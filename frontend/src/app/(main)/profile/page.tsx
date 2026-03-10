@@ -17,9 +17,11 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { authService } from "@/services/auth";
+import { useI18n } from "@/lib/i18n";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(false);
 
   // Change Password States
@@ -30,17 +32,17 @@ export default function ProfilePage() {
     e.preventDefault();
 
     if (!newPassword || !confirmPassword) {
-      toast.error("Vui lòng điền đầy đủ thông tin.");
+      toast.error(t.profile.fillAllFields);
       return;
     }
 
     if (newPassword.length < 8) {
-      toast.error("Mật khẩu phải có ít nhất 8 ký tự.");
+      toast.error(t.profile.passwordMinLength);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("Mật khẩu xác nhận không khớp.");
+      toast.error(t.profile.passwordMismatch);
       return;
     }
 
@@ -48,7 +50,7 @@ export default function ProfilePage() {
 
     try {
       await authService.setPassword(newPassword, confirmPassword);
-      toast.success("Đổi mật khẩu thành công!");
+      toast.success(t.profile.passwordChanged);
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: unknown) {
@@ -68,7 +70,7 @@ export default function ProfilePage() {
         errorData?.new_password?.[0] ||
         errorData?.confirm_password?.[0] ||
         errorData?.detail ||
-        "Không thể đổi mật khẩu.";
+        t.profile.passwordChangeFailed;
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -86,11 +88,11 @@ export default function ProfilePage() {
             onClick={() => router.push("/dashboard")}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Quay lại Dashboard
+            {t.profile.backToDashboard}
           </Button>
-          <h1 className="text-3xl font-bold text-foreground">Hồ sơ cá nhân</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t.profile.title}</h1>
           <p className="text-muted-foreground mt-2">
-            Quản lý thông tin tài khoản và mật khẩu của bạn
+            {t.profile.subtitle}
           </p>
         </div>
 
@@ -100,17 +102,17 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Thông tin tài khoản
+                {t.profile.accountInfo}
               </CardTitle>
               <CardDescription>
-                Thông tin cơ bản về tài khoản của bạn
+                {t.profile.accountInfoDesc}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm text-muted-foreground">
-                    Tên đăng nhập
+                    {t.profile.username}
                   </Label>
                   <p className="text-sm font-medium mt-1">
                     {typeof window !== "undefined"
@@ -119,7 +121,7 @@ export default function ProfilePage() {
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm text-muted-foreground">Email</Label>
+                  <Label className="text-sm text-muted-foreground">{t.profile.email}</Label>
                   <p className="text-sm font-medium mt-1 flex items-center gap-2">
                     <Mail className="h-4 w-4" />
                     {typeof window !== "undefined"
@@ -133,8 +135,7 @@ export default function ProfilePage() {
 
               <div className="text-sm text-muted-foreground">
                 <p>
-                  Để cập nhật thông tin tài khoản, vui lòng liên hệ quản trị
-                  viên.
+                  {t.profile.contactAdmin}
                 </p>
               </div>
             </CardContent>
@@ -145,20 +146,20 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Lock className="h-5 w-5" />
-                Đổi mật khẩu
+                {t.profile.changePassword}
               </CardTitle>
               <CardDescription>
-                Cập nhật mật khẩu mới cho tài khoản của bạn
+                {t.profile.changePasswordDesc}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newPassword">Mật khẩu mới</Label>
+                  <Label htmlFor="newPassword">{t.profile.newPassword}</Label>
                   <Input
                     id="newPassword"
                     type="password"
-                    placeholder="Ít nhất 8 ký tự"
+                    placeholder={t.profile.newPasswordPlaceholder}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     disabled={isLoading}
@@ -167,11 +168,11 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
+                  <Label htmlFor="confirmPassword">{t.profile.confirmPassword}</Label>
                   <Input
                     id="confirmPassword"
                     type="password"
-                    placeholder="Nhập lại mật khẩu mới"
+                    placeholder={t.profile.confirmPasswordPlaceholder}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={isLoading}
@@ -181,7 +182,7 @@ export default function ProfilePage() {
 
                 <div className="flex gap-3 pt-2">
                   <Button type="submit" disabled={isLoading}>
-                    {isLoading ? "Đang xử lý..." : "Đổi mật khẩu"}
+                    {isLoading ? t.profile.processing : t.profile.changePasswordBtn}
                   </Button>
                   <Button
                     type="button"
@@ -192,7 +193,7 @@ export default function ProfilePage() {
                     }}
                     disabled={isLoading}
                   >
-                    Hủy
+                    {t.profile.cancel}
                   </Button>
                 </div>
               </form>
@@ -203,16 +204,16 @@ export default function ProfilePage() {
           <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
             <CardHeader>
               <CardTitle className="text-blue-900 dark:text-blue-100">
-                💡 Mẹo bảo mật
+                💡 {t.profile.securityTips}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
               <ul className="list-disc list-inside space-y-1">
-                <li>Sử dụng mật khẩu mạnh với ít nhất 8 ký tự</li>
-                <li>Kết hợp chữ hoa, chữ thường, số và ký tự đặc biệt</li>
-                <li>Không sử dụng cùng mật khẩu cho nhiều tài khoản</li>
-                <li>Đổi mật khẩu định kỳ để bảo vệ tài khoản</li>
-                <li>Không chia sẻ mật khẩu với người khác</li>
+                <li>{t.profile.tip1}</li>
+                <li>{t.profile.tip2}</li>
+                <li>{t.profile.tip3}</li>
+                <li>{t.profile.tip4}</li>
+                <li>{t.profile.tip5}</li>
               </ul>
             </CardContent>
           </Card>

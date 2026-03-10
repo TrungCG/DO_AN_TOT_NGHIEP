@@ -54,8 +54,8 @@ export const activityService = {
 
 export const notificationService = {
   getAll: async () => {
-    const res = await api.get<Notification[]>("/notifications/");
-    return res.data;
+    const res = await api.get<{ unread_count: number; notifications: Notification[] }>("/notifications/");
+    return res.data.notifications;
   },
   markAsRead: async (id: number) => {
     await api.post(`/notifications/${id}/read/`, {});

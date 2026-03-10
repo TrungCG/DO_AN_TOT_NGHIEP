@@ -15,12 +15,25 @@ interface SignupPayload {
   last_name: string;
 }
 
+// Helper to set cookie
+const setCookie = (name: string, value: string, days: number = 7) => {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+};
+
+// Helper to delete cookie
+const deleteCookie = (name: string) => {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+};
+
 export const authService = {
   login: async (data: LoginPayload) => {
     const response = await api.post<LoginResponse>("/login/", data);
     if (response.data.access) {
       localStorage.setItem("access_token", response.data.access);
       localStorage.setItem("refresh_token", response.data.refresh);
+      // Also set cookie for middleware
+      setCookie("access_token", response.data.access);
     }
     return response.data;
   },
@@ -33,6 +46,8 @@ export const authService = {
   logout: () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
+    // Also remove cookie
+    deleteCookie("access_token");
     window.location.href = "/login";
   },
 
@@ -75,6 +90,8 @@ export const authService = {
     if (response.data.access) {
       localStorage.setItem("access_token", response.data.access);
       localStorage.setItem("refresh_token", response.data.refresh);
+      // Also set cookie for middleware
+      setCookie("access_token", response.data.access);
     }
     return response.data;
   },

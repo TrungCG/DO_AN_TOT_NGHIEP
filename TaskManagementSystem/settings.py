@@ -72,17 +72,14 @@ SIMPLE_JWT = {
 }
 
 
-# Khai báo model User tùy chỉnh
 AUTH_USER_MODEL = 'API.User'
 
 
-# Cấu hình drf-spectacular
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Task Management System API',
     'DESCRIPTION': 'Tài liệu API chi tiết cho Hệ thống Quản lý Công việc.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
-    # Cấu hình để Swagger UI hiểu JWT
     'SWAGGER_UI_SETTINGS': {
         'persistAuthorization': True,
     },
@@ -109,9 +106,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# CORS Configuration
-# Development: Cho phép tất cả origins
-# Production: Chỉ cho phép domain frontend cụ thể
+
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
@@ -140,8 +135,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'TaskManagementSystem.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
 
 # CẤU HÌNH KẾT NỐI POSTGRESQL
 DATABASES = {
@@ -176,8 +170,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
+
 
 LANGUAGE_CODE = 'en-us'
 
@@ -188,18 +181,12 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# ===== EMAIL CONFIGURATION =====
-# Dev: In email ra màn hình console (Terminal)
-# Production: Gửi email thực tế qua SMTP
+
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
@@ -212,3 +199,23 @@ else:
     EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@taskmanagement.com')
+
+# Cho phép dùng SMTP ngay cả khi DEBUG=True (set EMAIL_USE_SMTP=True trong .env)
+if os.getenv('EMAIL_USE_SMTP', 'False') == 'True':
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+    EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+    EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+    EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+
+
+# ============== CELERY CONFIGURATION ==============
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Ho_Chi_Minh'
+CELERY_BEAT_SCHEDULER = 'celery.beat:PersistentScheduler'
+

@@ -46,7 +46,7 @@ class CanViewTaskList(BasePermission):
 class IsTaskPermission(BasePermission):
     """
     - Task Cá nhân: Chỉ người tạo (created_by) mới có quyền.
-    - Task Dự án: Chủ project full quyền, Member/Assignee xem+sửa.
+    - Task Dự án: Chủ project full quyền, Member/Assignee xem+sửa (nhưng không được giao task).
     """
     def has_object_permission(self, request, view, obj):
         user = request.user
@@ -63,11 +63,27 @@ class IsTaskPermission(BasePermission):
             is_owner = user == project.owner
             is_member = user in project.members.all()
             is_assignee = user == obj.assignee
+            
+            # Debug logging
+            print(f"🔍 Permission Debug:")
+            print(f"   User: {user.id} - {user.username}")
+            print(f"   Project Owner: {project.owner.id} - {project.owner.username}")
+            print(f"   is_owner: {is_owner}")
+            print(f"   is_member: {is_member}")
+            print(f"   Method: {request.method}")
+            print(f"   Request data: {request.data}")
 
             if request.method in SAFE_METHODS:
                 return is_owner or is_member or is_assignee
+            
             if request.method in ['PUT', 'PATCH']:
+                # Chỉ có chủ dự án mới được phép giao/thay đổi assignee
+                if 'assignee_id' in request.data or 'assignee' in request.data:
+                    print(f"   Assignee change request - is_owner: {is_owner}")
+                    return is_owner
+                # Member và assignee chỉ được sửa description, status, priority, due_date
                 return is_owner or is_member or is_assignee
+            
             if request.method == 'DELETE':
                 return is_owner # Chỉ chủ dự án mới được xóa task dự án
         
@@ -97,6 +113,33 @@ class IsCommentOrAttachmentOwner(BasePermission):
         return is_author
 
 
+# Phân quyền bình luận trên task
+class CanCommentOnTask(BasePermission):
+    """
+    Cho phép bình luận trên task:
+    - Task Cá nhân: Chỉ người tạo và assignee có thể bình luận
+    - Task Dự án: Tất cả thành viên dự án có thể bình luận
+    """
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        if user.is_staff:
+            return True
+        
+        # Task cá nhân: chỉ người tạo và assignee
+        if obj.is_personal:
+            is_creator = obj.created_by == user
+            is_assignee = obj.assignee == user
+            return is_creator or is_assignee
+        
+        # Task dự án: tất cả thành viên
+        if obj.project:
+            is_owner = user == obj.project.owner
+            is_member = user in obj.project.members.all()
+            return is_owner or is_member
+        
+        return False
+
+
 # Phân quyền ActivityLog View
 class CanViewActivityLog(BasePermission):
     def has_permission(self, request, view):
@@ -108,4 +151,4 @@ class IsProjectOwnerOnly(BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.user.is_staff:
             return True
-        return request.user == obj.owner
+        return request.user.id == obj.owner.id

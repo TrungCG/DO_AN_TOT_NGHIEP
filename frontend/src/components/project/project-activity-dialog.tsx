@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Activity } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ export function ProjectActivityDialog({
 }: ProjectActivityDialogProps) {
   const [open, setOpen] = useState(false);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const { getDisplayName } = useCurrentUser();
 
   const fetchLogs = async () => {
     try {
@@ -58,7 +60,7 @@ export function ProjectActivityDialog({
             {logs.map((log) => (
               <div key={log.id} className="flex gap-3 text-sm">
                 <div className="font-semibold min-w-[80px]">
-                  {log.actor?.username}
+                  {log.actor ? getDisplayName(log.actor.id, log.actor.username) : "Hệ thống"}
                 </div>
                 <div className="flex-1">
                   {log.action_description}

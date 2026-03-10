@@ -13,6 +13,7 @@ urlpatterns = [
 
     # Users
     path('users/', views.UserListView.as_view(), name='user-list'),
+    path('users/me/', views.CurrentUserView.as_view(), name='current-user'),
     path('users/<int:pk>/', views.UserDetailView.as_view(), name='user-detail'),
 
     # Projects
@@ -28,6 +29,9 @@ urlpatterns = [
     
     # 2. Task Cá nhân (MỚI)
     path('my-tasks/', views.PersonalTaskListView.as_view(), name='personal-task-list'),
+    
+    # 3. All Assigned Tasks (cá nhân + dự án)
+    path('assigned-tasks/', views.AssignedTasksView.as_view(), name='assigned-task-list'),
 
     # 3. Task Detail (Dùng chung cho cả 2 loại, bỏ project_pk ở url)
     path('tasks/<int:pk>/', views.TaskDetailView.as_view(), name='task-detail'),

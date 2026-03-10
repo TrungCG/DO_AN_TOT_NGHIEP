@@ -36,6 +36,7 @@ class Task(models.Model):
     description = models.TextField(blank=True, null=True, verbose_name="Mô tả chi tiết")
     status = models.CharField(max_length=4, choices=Status.choices, default=Status.TODO, verbose_name="Trạng thái")
     priority = models.CharField(max_length=4, choices=Priority.choices, default=Priority.MEDIUM, verbose_name="Độ ưu tiên")
+    start_date = models.DateTimeField(null=True, blank=True, verbose_name="Ngày bắt đầu")
     due_date = models.DateTimeField(null=True, blank=True, verbose_name="Ngày hết hạn")
     
     # --- CẬP NHẬT QUAN TRỌNG ---

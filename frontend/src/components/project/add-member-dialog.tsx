@@ -35,13 +35,23 @@ import { cn } from "@/lib/utils";
 interface AddMemberDialogProps {
   projectId: number;
   onSuccess: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function AddMemberDialog({
   projectId,
   onSuccess,
+  open: controlledOpen,
+  onOpenChange,
 }: AddMemberDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Use controlled or uncontrolled open state
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled && onOpenChange ? onOpenChange : setInternalOpen;
+  
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,12 +86,14 @@ export function AddMemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <UserPlus className="mr-2 h-4 w-4" />
-          Thêm thành viên
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Thêm thành viên
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Thêm thành viên vào dự án</DialogTitle>

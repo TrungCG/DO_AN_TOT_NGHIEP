@@ -35,6 +35,7 @@ from .permissions import (
     CanViewTaskList,
     IsTaskPermission,
     IsCommentOrAttachmentOwner,
+    CanCommentOnTask,
     CanViewActivityLog,
     IsProjectOwnerOnly,
 )
@@ -44,6 +45,17 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
+
+# Import email utils
+from .email_utils import (
+    send_task_assigned_notification, 
+    send_project_invitation_notification,
+    send_task_due_date_changed_notification,
+    send_task_comment_notification,
+    send_task_deleted_notification,
+    send_task_status_changed_notification,
+    send_member_removed_notification,
+)
 
 
 def create_activity_log(user, action_description, project=None, task=None):
@@ -72,6 +84,7 @@ def create_notification(recipient, title, message, project=None, task=None):
 # SIGNUP
 class SignupView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
     def post(self, request):
         user = SignupSerializer(data=request.data)
         if user.is_valid():
@@ -80,12 +93,15 @@ class SignupView(APIView):
         return Response(user.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# LOGIN
+# LOGIN 
 class LoginView(TokenObtainPairView):
+    from .serializers import CustomTokenObtainPairSerializer
+    serializer_class = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
+    authentication_classes = []
 
 
-# SET PASSWORD (cho user Google hoặc user muốn set password lần đầu)
+# SET PASSWORD 
 class SetPasswordView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -94,14 +110,11 @@ class SetPasswordView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        # Kiểm tra xem user đã có mật khẩu chưa
         if request.user.has_usable_password():
             return Response(
                 {"error": "Tài khoản của bạn đã có mật khẩu. Nếu muốn đổi mật khẩu, vui lòng sử dụng chức năng 'Đổi mật khẩu'."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # Set mật khẩu mới
         request.user.set_password(serializer.validated_data['new_password'])
         request.user.save()
         
@@ -111,9 +124,10 @@ class SetPasswordView(APIView):
         )
 
 
-# FORGOT PASSWORD (Bước 1: User nhập email)
+# FORGOT PASSWORD
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
     
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
@@ -125,13 +139,12 @@ class ForgotPasswordView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            # Trả về thông báo chung để tránh leak thông tin user
             return Response(
                 {"message": "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được email hướng dẫn reset mật khẩu."},
                 status=status.HTTP_200_OK
             )
         
-        # ❗ CHẶN USER GOOGLE CHƯA CÓ PASSWORD
+        # CHẶN USER GOOGLE CHƯA CÓ PASSWORD
         if not user.has_usable_password():
             return Response(
                 {
@@ -143,17 +156,13 @@ class ForgotPasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Xóa token cũ (nếu có) để tránh spam
         PasswordResetToken.objects.filter(user=user, is_used=False).delete()
-        
-        # Tạo token mới với hết hạn 24 giờ
         expires_at = timezone.now() + timedelta(hours=24)
         reset_token = PasswordResetToken.objects.create(
             user=user,
             expires_at=expires_at
         )
         
-        # Lấy Frontend URL từ settings (đã config trong .env)
         frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
         reset_link = f"{frontend_url}/reset-password?token={reset_token.token}"
         
@@ -193,9 +202,9 @@ class ForgotPasswordView(APIView):
         )
 
 
-# RESET PASSWORD (Bước 2: User set password mới với token)
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
     
     def post(self, request):
         serializer = ResetPasswordSerializer(data=request.data)
@@ -213,19 +222,16 @@ class ResetPasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Kiểm tra token đã hết hạn chưa
         if reset_token.expires_at < timezone.now():
             return Response(
                 {"error": "Token đã hết hạn. Vui lòng yêu cầu reset mật khẩu mới."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Set mật khẩu mới
         user = reset_token.user
         user.set_password(new_password)
         user.save()
         
-        # Đánh dấu token đã sử dụng
         reset_token.is_used = True
         reset_token.save()
         
@@ -259,6 +265,14 @@ class UserDetailView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+# CURRENT USER (ME)
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 # PROJECT LIST / CREATE
 class ProjectListView(APIView):
     permission_classes = [IsAuthenticated, CanViewProjectList]
@@ -275,6 +289,13 @@ class ProjectListView(APIView):
         if serializer.is_valid():
             project = serializer.save(owner=request.user)
             project.members.add(request.user)
+            
+            # Tự động thêm tất cả admin (is_staff=True) vào dự án mới
+            admin_users = User.objects.filter(is_staff=True)
+            for admin in admin_users:
+                if admin.id != request.user.id:  # Không thêm lại nếu owner đã là admin
+                    project.members.add(admin)
+            
             create_activity_log(request.user, f"Tạo dự án mới: {project.name}", project=project)
             return Response(ProjectSerializer(project).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -361,6 +382,9 @@ class AddMemberView(APIView):
             project=project
         )
         
+        # Gửi email thông báo mời vào dự án
+        send_project_invitation_notification(project, request.user, user)
+        
         return Response({"message": f"Đã thêm {user.username} vào dự án."}, status=status.HTTP_200_OK)
 
 
@@ -386,19 +410,35 @@ class RemoveMemberView(APIView):
             return Response({"message": f"{user.username} không phải là thành viên."}, status=status.HTTP_200_OK)
         project.members.remove(user)
         create_activity_log(request.user, f"Xóa thành viên '{user.username}' khỏi dự án '{project.name}'", project=project)
+        
+        # Gửi email thông báo xóa thành viên
+        send_member_removed_notification(project, request.user, user)
+        
+        # Tạo thông báo cho user bị xóa
+        create_notification(
+            recipient=user,
+            title="Bạn đã bị xóa khỏi dự án",
+            message=f"Bạn đã bị {request.user.username} xóa khỏi dự án '{project.name}'.",
+            project=None  # Không liên kết với project nữa
+        )
+        
         return Response({"message": f"Đã xóa {user.username} khỏi dự án."}, status=status.HTTP_200_OK)
 
 
 
-# 1. API CHO TASK DỰ ÁN (Project Tasks)
+# Project Tasks
 class TaskListView(APIView):
     permission_classes = [IsAuthenticated, CanViewTaskList]
     def get(self, request, pk):
-        # Lấy task thuộc dự án này VÀ không phải task cá nhân
         task = self.permission_classes[1]().filter_queryset(request, pk)
-        filterset = TaskFilter(request.GET, queryset=task, request=request)
-        if filterset.is_valid():
-            task = filterset.qs
+        try:
+            filterset = TaskFilter(request.GET, queryset=task, request=request)
+            if filterset.is_valid():
+                task = filterset.qs
+            else:
+                task = filterset.queryset
+        except Exception as e:
+            task = Task.objects.filter(project_id=pk, is_personal=False)
         serializer = TaskSerializer(task, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -414,24 +454,27 @@ class TaskListView(APIView):
 
         serializer = TaskSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            # --- ÉP LUẬT: TASK DỰ ÁN ---
             task = serializer.save(
                 project=project,       # BẮT BUỘC CÓ PROJECT
-                is_personal=False,     # BẮT BUỘC FALSE
+                is_personal=False,   
                 created_by=request.user
             )
             create_activity_log(request.user, f"Tạo công việc '{task.title}'", project=project, task=task)
+            
+            # Gửi email nếu task được tạo với assignee
+            if task.assignee and task.assignee != request.user:
+                send_task_assigned_notification(task, task.assignee, request.user)
+            
             return Response(TaskSerializer(task).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
-# 2. API CHO TASK CÁ NHÂN (Personal Tasks)
+# Personal Tasks
 class PersonalTaskListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Chỉ lấy task do mình tạo VÀ là task cá nhân
         tasks = Task.objects.filter(created_by=request.user, is_personal=True)
         filterset = TaskFilter(request.GET, queryset=tasks, request=request)
         if filterset.is_valid():
@@ -442,23 +485,37 @@ class PersonalTaskListView(APIView):
     def post(self, request):
         serializer = TaskSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            # --- ÉP LUẬT: TASK CÁ NHÂN ---
             task = serializer.save(
                 project=None,          # BẮT BUỘC NULL
-                is_personal=True,      # BẮT BUỘC TRUE
+                is_personal=True,     
                 created_by=request.user,
-                assignee=request.user  # Task cá nhân thì tự giao cho mình luôn
+                assignee=request.user  
             )
             return Response(TaskSerializer(task).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# All Assigned Tasks (personal + project tasks assigned to user)
+class AssignedTasksView(APIView):
+    permission_classes = [IsAuthenticated]
 
-# 3. GENERIC TASK DETAIL (Dùng chung)
+    def get(self, request):
+        from django.db.models import Q
+        # Get all tasks assigned to user OR created by user (personal tasks)
+        tasks = Task.objects.filter(
+            Q(assignee=request.user) | Q(created_by=request.user, is_personal=True)
+        ).distinct()
+        filterset = TaskFilter(request.GET, queryset=tasks, request=request)
+        if filterset.is_valid():
+            tasks = filterset.qs
+        serializer = TaskSerializer(tasks, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# GENERIC TASK DETAIL 
 class TaskDetailView(APIView):
     permission_classes = [IsAuthenticated, IsTaskPermission]
 
-    # Bỏ tham số project_pk, chỉ cần pk của task
     def get(self, request, pk): 
         try:
             task = Task.objects.get(pk=pk)
@@ -474,9 +531,38 @@ class TaskDetailView(APIView):
         except Task.DoesNotExist:
             raise NotFound("Công việc không tồn tại.")
         self.check_object_permissions(request, task)
+        
+        # Lưu giá trị cũ để so sánh
+        old_due_date = task.due_date
+        old_status = task.status
+        old_assignee = task.assignee
+        
         serializer = TaskSerializer(task, data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            updated_task = serializer.save()
+            
+            # Xác định người nhận thông báo
+            recipients = set()
+            if updated_task.assignee:
+                recipients.add(updated_task.assignee)
+            if updated_task.created_by:
+                recipients.add(updated_task.created_by)
+            if updated_task.project:
+                for member in updated_task.project.members.all():
+                    recipients.add(member)
+            
+            # Gửi email khi thay đổi assignee
+            if old_assignee != updated_task.assignee and updated_task.assignee:
+                send_task_assigned_notification(updated_task, updated_task.assignee, request.user)
+            
+            # Gửi email khi thay đổi due_date
+            if old_due_date != updated_task.due_date:
+                send_task_due_date_changed_notification(updated_task, request.user, old_due_date, recipients)
+            
+            # Gửi email khi thay đổi status
+            if old_status != updated_task.status:
+                send_task_status_changed_notification(updated_task, request.user, old_status, recipients)
+            
             if not task.is_personal:
                 create_activity_log(request.user, f"đã cập nhật công việc '{task.title}'", project=task.project, task=task)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -488,9 +574,38 @@ class TaskDetailView(APIView):
         except Task.DoesNotExist:
             raise NotFound("Công việc không tồn tại.")
         self.check_object_permissions(request, task)
+        
+        # Lưu giá trị cũ để so sánh
+        old_due_date = task.due_date
+        old_status = task.status
+        old_assignee = task.assignee
+        
         serializer = TaskSerializer(task, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            updated_task = serializer.save()
+            
+            # Xác định người nhận thông báo
+            recipients = set()
+            if updated_task.assignee:
+                recipients.add(updated_task.assignee)
+            if updated_task.created_by:
+                recipients.add(updated_task.created_by)
+            if updated_task.project:
+                for member in updated_task.project.members.all():
+                    recipients.add(member)
+            
+            # Gửi email khi thay đổi assignee
+            if old_assignee != updated_task.assignee and updated_task.assignee:
+                send_task_assigned_notification(updated_task, updated_task.assignee, request.user)
+            
+            # Gửi email khi thay đổi due_date
+            if old_due_date != updated_task.due_date:
+                send_task_due_date_changed_notification(updated_task, request.user, old_due_date, recipients)
+            
+            # Gửi email khi thay đổi status
+            if old_status != updated_task.status:
+                send_task_status_changed_notification(updated_task, request.user, old_status, recipients)
+            
             if not task.is_personal:
                 create_activity_log(request.user, f"đã cập nhật một phần công việc '{task.title}'", project=task.project, task=task)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -502,8 +617,24 @@ class TaskDetailView(APIView):
         except Task.DoesNotExist:
             raise NotFound("Công việc không tồn tại.")
         self.check_object_permissions(request, task)
+        
         task_title = task.title
         project = task.project
+        
+        # Xác định người nhận email thông báo xóa
+        recipients = set()
+        if task.assignee:
+            recipients.add(task.assignee)
+        if task.created_by:
+            recipients.add(task.created_by)
+        if project:
+            for member in project.members.all():
+                recipients.add(member)
+        
+        # Gửi email thông báo xóa task
+        if recipients:
+            send_task_deleted_notification(task_title, project, request.user, recipients)
+        
         task.delete()
         if project:
             create_activity_log(request.user, f"đã xóa công việc '{task_title}'", project=project)
@@ -512,13 +643,19 @@ class TaskDetailView(APIView):
 
 # COMMENT LIST / CREATE
 class CommentListView(APIView):
-    permission_classes = [IsAuthenticated, IsTaskPermission]
+    permission_classes = [IsAuthenticated]
+    
     def get(self, request, task_pk):
         try:
             task = Task.objects.get(pk=task_pk)
         except Task.DoesNotExist:
             return Response({"error": "Công việc không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
-        self.check_object_permissions(request, task)
+        
+        # Kiểm tra quyền xem task
+        permission = IsTaskPermission()
+        if not permission.has_object_permission(request, self, task):
+            return Response({"error": "Bạn không có quyền xem công việc này."}, status=status.HTTP_403_FORBIDDEN)
+        
         comments = Comment.objects.filter(task=task)
         serializer = CommentSerializer(comments, many=True)
         return Response(serializer.data)
@@ -528,7 +665,12 @@ class CommentListView(APIView):
             task = Task.objects.get(pk=task_pk)
         except Task.DoesNotExist:
             return Response({"error": "Công việc không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
-        self.check_object_permissions(request, task)
+        
+        # Kiểm tra quyền bình luận trên task
+        permission = CanCommentOnTask()
+        if not permission.has_object_permission(request, self, task):
+            return Response({"error": "Bạn không có quyền bình luận trên công việc này."}, status=status.HTTP_403_FORBIDDEN)
+        
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():
             comment = serializer.save(author=request.user, task=task)
@@ -559,6 +701,9 @@ class CommentListView(APIView):
                         project=task.project,
                         task=task
                     )
+                
+                # Gửi email thông báo bình luận mới
+                send_task_comment_notification(task, comment, request.user, recipients_to_notify)
             
             return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -680,6 +825,7 @@ class ActivityLogTaskView(APIView):
 # LOGIN GOOGLE
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request):
         serializer = GoogleLoginSerializer(data=request.data)

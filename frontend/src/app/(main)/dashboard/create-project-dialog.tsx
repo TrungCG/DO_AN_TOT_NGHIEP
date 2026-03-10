@@ -28,11 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { projectService } from "@/services/project";
-
-const formSchema = z.object({
-  name: z.string().min(1, "Tên dự án không được để trống"),
-  description: z.string().optional(),
-});
+import { useI18n } from "@/lib/i18n";
 
 interface CreateProjectDialogProps {
   onSuccess: () => void;
@@ -41,6 +37,12 @@ interface CreateProjectDialogProps {
 export function CreateProjectDialog({ onSuccess }: CreateProjectDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useI18n();
+
+  const formSchema = z.object({
+    name: z.string().min(1, t.project.projectNameRequired),
+    description: z.string().optional(),
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,13 +56,13 @@ export function CreateProjectDialog({ onSuccess }: CreateProjectDialogProps) {
     setIsLoading(true);
     try {
       await projectService.create(values);
-      toast.success("Tạo dự án thành công!");
+      toast.success(t.project.createSuccess);
       setOpen(false);
       form.reset();
       onSuccess();
     } catch (error) {
       console.error(error);
-      toast.error("Có lỗi xảy ra khi tạo dự án.");
+      toast.error(t.project.createError);
     } finally {
       setIsLoading(false);
     }
@@ -71,14 +73,14 @@ export function CreateProjectDialog({ onSuccess }: CreateProjectDialogProps) {
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Tạo dự án
+          {t.project.createProject}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Tạo dự án mới</DialogTitle>
+          <DialogTitle>{t.project.createProjectTitle}</DialogTitle>
           <DialogDescription>
-            Nhập thông tin dự án của bạn. Nhấn lưu để hoàn tất.
+            {t.project.createProjectDesc}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -88,9 +90,9 @@ export function CreateProjectDialog({ onSuccess }: CreateProjectDialogProps) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tên dự án</FormLabel>
+                  <FormLabel>{t.project.projectName}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Dự án ABC..." {...field} />
+                    <Input placeholder={t.project.projectNamePlaceholder} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -101,10 +103,10 @@ export function CreateProjectDialog({ onSuccess }: CreateProjectDialogProps) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mô tả</FormLabel>
+                  <FormLabel>{t.common.description}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Mô tả ngắn gọn về dự án..."
+                      placeholder={t.project.projectDescPlaceholder}
                       {...field}
                     />
                   </FormControl>
@@ -115,7 +117,7 @@ export function CreateProjectDialog({ onSuccess }: CreateProjectDialogProps) {
             <DialogFooter>
               <Button type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Lưu dự án
+                {t.project.saveProject}
               </Button>
             </DialogFooter>
           </form>

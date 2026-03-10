@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #dc3545; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f8f9fa; padding: 20px; border: 1px solid #ddd; }
+        .task-info { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .task-info table { width: 100%; }
+        .task-info td { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .task-info td:first-child { font-weight: bold; color: #666; width: 40%; }
+        .footer { text-align: center; padding: 15px; color: #666; font-size: 12px; }
+        .warning { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ Cảnh Báo: Công Việc Quá Hạn</h1>
+        </div>
+        <div class="content">
+            <p>Xin chào,</p>
+            <p class="warning">Công việc sau đây trong dự án "{{ project.name }}" đã quá hạn:</p>
+            
+            <div class="task-info">
+                <table>
+                    <tr>
+                        <td>Tiêu đề:</td>
+                        <td><strong>{{ task.title }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Dự án:</td>
+                        <td>{{ project.name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Hạn hoàn thành:</td>
+                        <td class="warning">{{ due_date }}</td>
+                    </tr>
+                    <tr>
+                        <td>Người được giao:</td>
+                        <td>{{ assignee }}</td>
+                    </tr>
+                    <tr>
+                        <td>Độ ưu tiên:</td>
+                        <td>{{ priority }}</td>
+                    </tr>
+                    <tr>
+                        <td>Trạng thái:</td>
+                        <td>{{ status }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <p>Vui lòng đăng nhập hệ thống để kiểm tra và cập nhật tiến độ công việc.</p>
+        </div>
+        <div class="footer">
+            <p>Email này được gửi tự động từ Hệ thống Quản lý Công việc</p>
+        </div>
+    </div>
+</body>
+</html>

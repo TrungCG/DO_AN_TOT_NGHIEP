@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #6f42c1; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f8f9fa; padding: 20px; border: 1px solid #ddd; }
+        .info-box { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .info-box table { width: 100%; }
+        .info-box td { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .info-box td:first-child { font-weight: bold; color: #666; width: 40%; }
+        .footer { text-align: center; padding: 15px; color: #666; font-size: 12px; }
+        .old-date { color: #dc3545; text-decoration: line-through; }
+        .new-date { color: #198754; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 Thay Đổi Thời Hạn Công Việc</h1>
+        </div>
+        <div class="content">
+            <p><strong>{{ changed_by.username }}</strong> đã thay đổi thời hạn công việc:</p>
+            
+            <div class="info-box">
+                <table>
+                    <tr>
+                        <td>Công việc:</td>
+                        <td><strong>{{ task.title }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Dự án:</td>
+                        <td>{{ project_name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Thời hạn cũ:</td>
+                        <td class="old-date">{{ old_due_date }}</td>
+                    </tr>
+                    <tr>
+                        <td>Thời hạn mới:</td>
+                        <td class="new-date">{{ new_due_date }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <p>Vui lòng đăng nhập hệ thống để xem chi tiết.</p>
+        </div>
+        <div class="footer">
+            <p>Email này được gửi tự động từ Hệ thống Quản lý Công việc</p>
+        </div>
+    </div>
+</body>
+</html>

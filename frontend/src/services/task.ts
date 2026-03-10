@@ -25,5 +25,10 @@ export const taskService = {
   createPersonal: async (data: CreateTaskPayload) => {
     const response = await api.post<Task>('/my-tasks/', data);
     return response.data;
+  },
+  // All Assigned Tasks (personal + project)
+  getAssigned: async () => {
+    const response = await api.get<Task[]>('/assigned-tasks/');
+    return response.data;
   }
 };

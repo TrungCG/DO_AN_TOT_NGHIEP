@@ -2,6 +2,18 @@ import re
 from rest_framework import serializers
 from .models import User, Project, Task, Comment, Attachment, ActivityLog, Notification
 from rest_framework.validators import UniqueValidator
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+
+# Custom JWT Serializer để thêm is_staff vào token
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Thêm thông tin is_staff vào token payload
+        token['is_staff'] = user.is_staff
+        token['username'] = user.username
+        return token
 
 class SignupSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(required=True)
@@ -37,12 +49,12 @@ class SignupSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff']
         
 class UserBasicSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'email']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'is_staff']
 
 class ProjectSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
@@ -65,7 +77,7 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = [
-            'id', 'title', 'description', 'status', 'priority', 'due_date', 
+            'id', 'title', 'description', 'status', 'priority', 'start_date', 'due_date', 
             'project', 'assignee', 'assignee_id', 
             'is_personal', 'created_by',
             'created_at', 'updated_at'
@@ -82,8 +94,17 @@ class TaskSerializer(serializers.ModelSerializer):
         new_assignee = instance.assignee
         user = self.context.get('request').user if self.context.get('request') else None
         
+        # Không gửi thông báo nếu:
+        # 1. Là task cá nhân (is_personal=True)
+        # 2. Người được giao chính là người tạo task
+        if instance.is_personal:
+            return
+        
         # Chỉ gửi nếu assignee thay đổi và có assignee mới
         if new_assignee and new_assignee != old_assignee and user:
+            # Không gửi thông báo cho chính mình
+            if new_assignee == user:
+                return
             project_name = instance.project.name if instance.project else "một dự án"
             create_notification(
                 recipient=new_assignee,

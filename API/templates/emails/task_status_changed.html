@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #20c997; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f8f9fa; padding: 20px; border: 1px solid #ddd; }
+        .info-box { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .info-box table { width: 100%; }
+        .info-box td { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .info-box td:first-child { font-weight: bold; color: #666; width: 40%; }
+        .footer { text-align: center; padding: 15px; color: #666; font-size: 12px; }
+        .old-status { color: #6c757d; }
+        .new-status { color: #20c997; font-weight: bold; }
+        .status-done { color: #198754; }
+        .status-inprogress { color: #ffc107; }
+        .status-todo { color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Cập Nhật Trạng Thái</h1>
+        </div>
+        <div class="content">
+            <p><strong>{{ changed_by.username }}</strong> đã thay đổi trạng thái công việc:</p>
+            
+            <div class="info-box">
+                <table>
+                    <tr>
+                        <td>Công việc:</td>
+                        <td><strong>{{ task.title }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Dự án:</td>
+                        <td>{{ project_name }}</td>
+                    </tr>
+                    <tr>
+                        <td>Trạng thái cũ:</td>
+                        <td class="old-status">{{ old_status }}</td>
+                    </tr>
+                    <tr>
+                        <td>Trạng thái mới:</td>
+                        <td class="new-status">{{ new_status }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <p>Vui lòng đăng nhập hệ thống để xem chi tiết.</p>
+        </div>
+        <div class="footer">
+            <p>Email này được gửi tự động từ Hệ thống Quản lý Công việc</p>
+        </div>
+    </div>
+</body>
+</html>

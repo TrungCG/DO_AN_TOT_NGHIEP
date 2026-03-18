@@ -443,7 +443,9 @@ export function JiraTimelineView({
 
     // Week view: Group by weeks with month names (like Jira)
     // Week starts on Monday (1) and ends on Sunday (0)
+    const monthShortVi = ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"];
     const monthShortEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthShort = locale === 'vi' ? monthShortVi : monthShortEn;
     let weekDays: Date[] = [];
     
     timelineRange.forEach((day, index) => {
@@ -463,9 +465,9 @@ export function JiraTimelineView({
           // Create label like "Feb / Mar" if spanning two months, or just "Mar"
           let label: string;
           if (firstDayMonth !== lastDayMonth) {
-            label = `${monthShortEn[firstDayMonth]} / ${monthShortEn[lastDayMonth]}`;
+            label = `${monthShort[firstDayMonth]} / ${monthShort[lastDayMonth]}`;
           } else {
-            label = monthShortEn[firstDayMonth];
+            label = monthShort[firstDayMonth];
           }
           
           const firstDayOfWeek = weekDays[0];
@@ -480,7 +482,7 @@ export function JiraTimelineView({
     });
     
     return groups;
-  }, [timelineRange, viewMode, dateLocale]);
+  }, [timelineRange, viewMode, dateLocale, locale]);
 
   const dayWidth = getDayWidth();
 

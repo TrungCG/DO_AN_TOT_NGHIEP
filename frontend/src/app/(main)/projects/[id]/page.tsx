@@ -29,7 +29,7 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"board" | "list" | "calendar" | "timeline" | "summary" | "reports">("board");
+  const [activeTab, setActiveTab] = useState<"board" | "list" | "calendar" | "timeline" | "summary">("board");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -54,6 +54,13 @@ export default function ProjectDetailPage() {
 
   // Check if current user can access settings (owner or admin)
   const canAccessSettings = isAdmin || (currentUserId && project && Number(currentUserId) === Number(project.owner.id));
+
+  // Redirect to board if user doesn't have permission to view summary tab
+  useEffect(() => {
+    if (activeTab === "summary" && !canAccessSettings && project && currentUserId !== null) {
+      setActiveTab("board");
+    }
+  }, [activeTab, canAccessSettings, project, currentUserId]);
 
   const fetchData = async () => {
     try {
@@ -166,7 +173,11 @@ export default function ProjectDetailPage() {
 
         {activeTab === "summary" && (
           <div className="space-y-6">
-            <ProjectOverview tasks={allTasks} members={allMembers} />
+            <ProjectOverview 
+              tasks={allTasks} 
+              members={allMembers} 
+              canViewMemberProgress={canAccessSettings}
+            />
             
             {/* Settings and Activity buttons */}
             <div className="flex gap-2">
@@ -228,13 +239,6 @@ export default function ProjectDetailPage() {
             onTaskUpdated={handleTaskUpdated}
             onTaskDeleted={handleTaskDeleted}
           />
-        )}
-
-        {activeTab === "reports" && (
-          <div className="text-center py-20 text-gray-500 dark:text-gray-400">
-            <p className="text-lg">Tính năng đang được phát triển</p>
-            <p className="text-sm mt-2">Chức năng này sẽ sớm được triển khai</p>
-          </div>
         )}
       </div>
 

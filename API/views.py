@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -19,6 +19,7 @@ from .serializers import (
     UserSerializer, 
     ProjectSerializer, 
     UserBasicSerializer,
+    UserAdminSerializer,
     TaskSerializer, 
     CommentSerializer, 
     AttachmentSerializer, 
@@ -271,6 +272,62 @@ class CurrentUserView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ADMIN USER MANAGEMENT
+class AdminUserListView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    def get(self, request):
+        users = User.objects.all().order_by('-date_joined')
+        serializer = UserAdminSerializer(users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AdminUserDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            raise NotFound("Người dùng không tồn tại.")
+        serializer = UserAdminSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def patch(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            raise NotFound("Người dùng không tồn tại.")
+        
+        # Không cho phép thay đổi chính mình
+        if user.id == request.user.id:
+            return Response(
+                {"detail": "Không thể thay đổi quyền của chính mình."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = UserAdminSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            raise NotFound("Người dùng không tồn tại.")
+        
+        # Không cho phép xóa chính mình
+        if user.id == request.user.id:
+            return Response(
+                {"detail": "Không thể xóa chính mình."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # PROJECT LIST / CREATE

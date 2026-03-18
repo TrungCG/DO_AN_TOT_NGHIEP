@@ -14,6 +14,7 @@ import {
   CalendarDays,
   Circle,
   CheckCircle2,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -127,6 +128,11 @@ export function AppSidebar() {
     },
   ];
 
+  // Admin menu link
+  const adminLinks = currentUser?.is_staff
+    ? [{ href: "/admin/users", label: t.sidebar.userManagement, icon: UserCog }]
+    : [];
+
   return (
     <TooltipProvider>
       <div className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 h-screen flex flex-col fixed left-0 top-0 shadow-sm">
@@ -180,6 +186,35 @@ export function AppSidebar() {
         </div>
 
         <Separator className="mx-3" />
+
+        {/* Admin Section - Only shown for admin users */}
+        {adminLinks.length > 0 && (
+          <>
+            <div className="px-3 py-3">
+              <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-2 mb-2">
+                {t.sidebar.admin}
+              </p>
+              <nav className="space-y-1">
+                {adminLinks.map((link) => (
+                  <Link key={link.href} href={link.href}>
+                    <div
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                        pathname === link.href || pathname.startsWith("/admin")
+                          ? "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
+                      )}
+                    >
+                      <link.icon className="h-4 w-4 flex-shrink-0" />
+                      <span className="flex-1">{link.label}</span>
+                    </div>
+                  </Link>
+                ))}
+              </nav>
+            </div>
+            <Separator className="mx-3" />
+          </>
+        )}
 
         {/* Main Navigation */}
         <div className="px-3 py-3">

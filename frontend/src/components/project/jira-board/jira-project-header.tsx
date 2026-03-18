@@ -10,14 +10,10 @@ import {
   Calendar, 
   Clock, 
   FileText, 
-  BarChart2, 
   Users,
-  Share2,
-  Zap,
   Settings,
   UserPlus,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,8 +24,8 @@ import {
 
 interface JiraProjectHeaderProps {
   project: Project;
-  activeTab: "board" | "list" | "calendar" | "timeline" | "summary" | "reports";
-  onTabChange: (tab: "board" | "list" | "calendar" | "timeline" | "summary" | "reports") => void;
+  activeTab: "board" | "list" | "calendar" | "timeline" | "summary";
+  onTabChange: (tab: "board" | "list" | "calendar" | "timeline" | "summary") => void;
   onOpenSettings?: () => void;
   onAddMember?: () => void;
 }
@@ -61,14 +57,17 @@ export function JiraProjectHeader({
   // Check if current user can access settings (owner or admin)
   const canAccessSettings = isAdmin || (currentUserId && Number(currentUserId) === Number(project.owner.id));
   
-  const tabs = [
-    { id: "summary", label: t.project.summary, icon: FileText },
+  const baseTabs = [
     { id: "board", label: t.project.board, icon: LayoutGrid },
     { id: "list", label: t.project.list, icon: List },
     { id: "calendar", label: t.project.calendar, icon: Calendar },
     { id: "timeline", label: t.project.timeline, icon: Clock },
-    { id: "reports", label: t.project.reports, icon: BarChart2 },
   ] as const;
+
+  // Only show summary tab for owner or admin
+  const tabs = canAccessSettings
+    ? [{ id: "summary", label: t.project.summary, icon: FileText }, ...baseTabs]
+    : baseTabs;
 
   // Get all members including owner
   const allMembers = [project.owner, ...project.members].filter(
@@ -180,12 +179,6 @@ export function JiraProjectHeader({
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="text-gray-600 dark:text-gray-400">
-              <Share2 className="h-4 w-4 mr-1" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-gray-600 dark:text-gray-400">
-              <Zap className="h-4 w-4 mr-1" />
-            </Button>
           </div>
         </div>
       </div>

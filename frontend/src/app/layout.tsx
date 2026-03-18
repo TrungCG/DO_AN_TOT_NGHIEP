@@ -4,6 +4,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/lib/i18n";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
           <ThemeProvider defaultTheme="system" storageKey="task-manager-theme">
             <I18nProvider>
               {children}
+              <Toaster richColors position="top-right" />
             </I18nProvider>
           </ThemeProvider>
         </GoogleOAuthProvider>

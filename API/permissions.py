@@ -76,6 +76,10 @@ class IsTaskPermission(BasePermission):
             if request.method in SAFE_METHODS:
                 return is_owner or is_member or is_assignee
             
+            if request.method == 'POST':
+                # Cho phép chủ dự án, thành viên hoặc người được giao việc tạo comment/attachment
+                return is_owner or is_member or is_assignee
+            
             if request.method in ['PUT', 'PATCH']:
                 # Chỉ có chủ dự án mới được phép giao/thay đổi assignee
                 if 'assignee_id' in request.data or 'assignee' in request.data:

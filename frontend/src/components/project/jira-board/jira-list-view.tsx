@@ -688,8 +688,8 @@ export function JiraListView({
                 />
               </TableHead>
               {renderSortableHeader("title", t.listView.work)}
-              <TableHead>{t.listView.assignee}</TableHead>
-              <TableHead>{t.listView.reporter}</TableHead>
+              {projectId !== -1 && <TableHead>{t.listView.assignee}</TableHead>}
+              {projectId !== -1 && <TableHead>{t.listView.reporter}</TableHead>}
               {renderSortableHeader("priority", t.common.priority)}
               {renderSortableHeader("status", t.common.status)}
               {renderSortableHeader("created_at", t.listView.created)}
@@ -726,66 +726,70 @@ export function JiraListView({
                     </span>
                   </button>
                 </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 rounded px-2 py-1 -mx-2 -my-1">
-                        {task.assignee ? (
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarFallback className={cn("text-xs text-white", getAvatarColor(task.assignee.id))}>
-                                {task.assignee.username.charAt(0).toUpperCase()}
+                {projectId !== -1 && (
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 rounded px-2 py-1 -mx-2 -my-1">
+                          {task.assignee ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback className={cn("text-xs text-white", getAvatarColor(task.assignee.id))}>
+                                  {task.assignee.username.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">{getDisplayName(task.assignee.id, task.assignee.username)}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-gray-400">
+                              <UserX className="h-5 w-5" />
+                              <span className="text-sm">{t.common.unassigned}</span>
+                            </div>
+                          )}
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        <DropdownMenuItem onClick={() => handleAssigneeChange(task, null)}>
+                          <UserX className="h-4 w-4 mr-2 text-gray-400" />
+                          {t.common.unassigned}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {members.map((member) => (
+                          <DropdownMenuItem 
+                            key={`assign-${task.id}-${member.id}`} 
+                            onClick={() => handleAssigneeChange(task, member.id)}
+                          >
+                            <Avatar className="h-5 w-5 mr-2">
+                              <AvatarFallback className={cn("text-xs text-white", getAvatarColor(member.id))}>
+                                {member.username.charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm">{getDisplayName(task.assignee.id, task.assignee.username)}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <UserX className="h-5 w-5" />
-                            <span className="text-sm">{t.common.unassigned}</span>
-                          </div>
-                        )}
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-48">
-                      <DropdownMenuItem onClick={() => handleAssigneeChange(task, null)}>
-                        <UserX className="h-4 w-4 mr-2 text-gray-400" />
-                        {t.common.unassigned}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      {members.map((member) => (
-                        <DropdownMenuItem 
-                          key={`assign-${task.id}-${member.id}`} 
-                          onClick={() => handleAssigneeChange(task, member.id)}
-                        >
-                          <Avatar className="h-5 w-5 mr-2">
-                            <AvatarFallback className={cn("text-xs text-white", getAvatarColor(member.id))}>
-                              {member.username.charAt(0).toUpperCase()}
+                            {getDisplayName(member.id, member.username)}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                )}
+                {projectId !== -1 && (
+                  <TableCell>
+                    {(() => {
+                      const creator = getCreator(task.created_by);
+                      return creator ? (
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className={cn("text-xs text-white", getAvatarColor(creator.id))}>
+                              {creator.username.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          {getDisplayName(member.id, member.username)}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-                <TableCell>
-                  {(() => {
-                    const creator = getCreator(task.created_by);
-                    return creator ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className={cn("text-xs text-white", getAvatarColor(creator.id))}>
-                            {creator.username.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">{getDisplayName(creator.id, creator.username)}</span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-sm">-</span>
-                    );
-                  })()}
-                </TableCell>
+                          <span className="text-sm">{getDisplayName(creator.id, creator.username)}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      );
+                    })()}
+                  </TableCell>
+                )}
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -1069,7 +1073,7 @@ export function JiraListView({
 
                   {/* Activity Section */}
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Activity</h3>
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t.common.activity}</h3>
                     <div className="flex items-center gap-2 mb-3">
                       <Button 
                         variant={activityTab === "all" ? "default" : "outline"} 
@@ -1077,7 +1081,7 @@ export function JiraListView({
                         className={cn("h-7", activityTab === "all" && "bg-blue-500 hover:bg-blue-600")}
                         onClick={() => setActivityTab("all")}
                       >
-                        All
+                        {t.common.all}
                       </Button>
                       <Button 
                         variant={activityTab === "comments" ? "default" : "outline"} 
@@ -1085,7 +1089,7 @@ export function JiraListView({
                         className={cn("h-7", activityTab === "comments" && "bg-blue-500 hover:bg-blue-600")}
                         onClick={() => setActivityTab("comments")}
                       >
-                        Comments
+                        {t.common.comments}
                       </Button>
                       <Button 
                         variant={activityTab === "history" ? "default" : "outline"} 
@@ -1093,7 +1097,7 @@ export function JiraListView({
                         className={cn("h-7", activityTab === "history" && "bg-blue-500 hover:bg-blue-600")}
                         onClick={() => setActivityTab("history")}
                       >
-                        History
+                        {t.common.history}
                       </Button>
                     </div>
 

@@ -106,10 +106,7 @@ export function JiraTaskCard({ task, onClick, projectKey = "DATN" }: JiraTaskCar
         )}
       >
         {/* Task Title */}
-        <h4 className={cn(
-          "text-sm text-gray-900 dark:text-gray-100 mb-2 leading-snug",
-          isDone && "line-through text-gray-500 dark:text-gray-400"
-        )}>
+        <h4 className="text-sm text-gray-900 dark:text-gray-100 mb-2 leading-snug">
           {task.title}
         </h4>
 

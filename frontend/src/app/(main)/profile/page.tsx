@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Lock, Mail, ArrowLeft } from "lucide-react";
+import { User as UserIcon, Lock, Mail, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,12 +17,28 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { authService } from "@/services/auth";
+import { userService } from "@/services/user";
 import { useI18n } from "@/lib/i18n";
+import { User } from "@/types/auth";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  // Fetch current user on mount
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await userService.getCurrentUser();
+        setUser(userData);
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+      }
+    };
+    fetchUser();
+  }, []);
 
   // Change Password States
   const [newPassword, setNewPassword] = useState("");
@@ -101,7 +117,7 @@ export default function ProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
+                <UserIcon className="h-5 w-5" />
                 {t.profile.accountInfo}
               </CardTitle>
               <CardDescription>
@@ -115,18 +131,14 @@ export default function ProfilePage() {
                     {t.profile.username}
                   </Label>
                   <p className="text-sm font-medium mt-1">
-                    {typeof window !== "undefined"
-                      ? localStorage.getItem("username") || "N/A"
-                      : "N/A"}
+                    {user?.username || "..."}
                   </p>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">{t.profile.email}</Label>
                   <p className="text-sm font-medium mt-1 flex items-center gap-2">
                     <Mail className="h-4 w-4" />
-                    {typeof window !== "undefined"
-                      ? localStorage.getItem("email") || "N/A"
-                      : "N/A"}
+                    {user?.email || "..."}
                   </p>
                 </div>
               </div>

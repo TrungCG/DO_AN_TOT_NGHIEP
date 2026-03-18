@@ -347,24 +347,6 @@ export function TaskDetailModal({
           View and edit the details of this task including comments and attachments.
         </DialogDescription>
 
-        {/* Error Alert */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-950/30 border-l-4 border-red-500 p-4 mx-6 mt-4 rounded">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-red-800 dark:text-red-400 font-semibold">{t.messages.error}</h3>
-                <p className="text-red-700 dark:text-red-300 text-sm mt-1">{error}</p>
-              </div>
-              <button
-                onClick={() => setError(null)}
-                className="text-red-500 hover:text-red-700 dark:hover:text-red-300"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Header */}
         <div className="p-6 pb-4 border-b dark:border-slate-700">
           <div className="flex justify-between items-start">

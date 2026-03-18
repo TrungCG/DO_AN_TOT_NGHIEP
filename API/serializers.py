@@ -3,10 +3,33 @@ from rest_framework import serializers
 from .models import User, Project, Task, Comment, Attachment, ActivityLog, Notification
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import authenticate
 
 
 # Custom JWT Serializer để thêm is_staff vào token
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        # Kiểm tra tài khoản bị vô hiệu hóa trước
+        username = attrs.get('username', '')
+        password = attrs.get('password', '')
+        
+        # Tìm user theo username hoặc email
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            try:
+                user = User.objects.get(email=username)
+            except User.DoesNotExist:
+                user = None
+        
+        # Nếu tìm thấy user và mật khẩu đúng nhưng tài khoản bị khóa
+        if user and user.check_password(password) and not user.is_active:
+            raise serializers.ValidationError({
+                'detail': 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.'
+            })
+        
+        return super().validate(attrs)
+    
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -55,6 +78,12 @@ class UserBasicSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name', 'last_name', 'email', 'is_staff']
+
+class UserAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined']
+        read_only_fields = ['id', 'username', 'date_joined']
 
 class ProjectSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)

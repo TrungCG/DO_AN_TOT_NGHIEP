@@ -3,6 +3,8 @@
 import { Task } from "@/types/task";
 import { User } from "@/types/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   PieChart,
   Pie,
@@ -15,14 +17,15 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { AlertCircle, CheckCircle2, Clock, ListTodo } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, ListTodo, Users, TrendingUp } from "lucide-react";
 
 interface ProjectOverviewProps {
   tasks: Task[];
   members: User[];
+  canViewMemberProgress?: boolean;
 }
 
-export function ProjectOverview({ tasks, members }: ProjectOverviewProps) {
+export function ProjectOverview({ tasks, members, canViewMemberProgress = false }: ProjectOverviewProps) {
   // Status Distribution
   const statusData = [
     {
@@ -101,6 +104,39 @@ export function ProjectOverview({ tasks, members }: ProjectOverviewProps) {
     ...item,
     percentage: totalPriorityTasks > 0 ? Math.round((item.value / totalPriorityTasks) * 100) : 0,
   }));
+
+  // Member Progress Data
+  const memberProgressData = members.map((member) => {
+    const memberTasks = tasks.filter((t) => t.assignee?.id === member.id);
+    const totalTasks = memberTasks.length;
+    const completedTasks = memberTasks.filter((t) => t.status === "DONE").length;
+    const inProgressTasks = memberTasks.filter((t) => t.status === "INPR").length;
+    const todoTasks = memberTasks.filter((t) => t.status === "TODO").length;
+    const overdueTasks = memberTasks.filter(
+      (t) => t.due_date && new Date(t.due_date) < now && t.status !== "DONE"
+    ).length;
+    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    return {
+      id: member.id,
+      name: member.first_name && member.last_name 
+        ? `${member.first_name} ${member.last_name}` 
+        : member.username,
+      username: member.username,
+      initial: member.first_name?.[0] || member.username[0],
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      todoTasks,
+      overdueTasks,
+      completionRate,
+    };
+  }).sort((a, b) => b.totalTasks - a.totalTasks);
+
+  // Get user initials
+  const getUserInitial = (member: User) => {
+    return member.first_name?.[0] || member.username[0];
+  };
 
   return (
     <div className="space-y-6 mb-8">
@@ -334,6 +370,88 @@ export function ProjectOverview({ tasks, members }: ProjectOverviewProps) {
           </Card>
         )}
       </div>
+
+      {/* Member Progress Section - Only for owner/admin */}
+      {canViewMemberProgress && memberProgressData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Tiến độ từng Thành viên</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Theo dõi tiến độ hoàn thành công việc của từng thành viên
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {memberProgressData.map((member) => (
+                <div key={member.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 border-2 border-primary/20">
+                        <AvatarFallback className="bg-gradient-to-br from-orange-400 to-amber-500 text-white text-sm font-semibold">
+                          {member.initial.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{member.name}</p>
+                        <p className="text-sm text-muted-foreground">@{member.username}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-green-500" />
+                      <span className="font-bold text-lg">{member.completionRate}%</span>
+                    </div>
+                  </div>
+                  
+                  <Progress value={member.completionRate} className="h-2 mb-3" />
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
+                    <div className="flex items-center gap-2 p-2 bg-muted rounded">
+                      <ListTodo className="h-4 w-4 text-slate-500" />
+                      <div>
+                        <p className="text-muted-foreground text-xs">Tổng</p>
+                        <p className="font-semibold">{member.totalTasks}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-950/30 rounded">
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      <div>
+                        <p className="text-muted-foreground text-xs">Cần làm</p>
+                        <p className="font-semibold text-red-600">{member.todoTasks}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950/30 rounded">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <div>
+                        <p className="text-muted-foreground text-xs">Đang làm</p>
+                        <p className="font-semibold text-blue-600">{member.inProgressTasks}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950/30 rounded">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <div>
+                        <p className="text-muted-foreground text-xs">Xong</p>
+                        <p className="font-semibold text-green-600">{member.completedTasks}</p>
+                      </div>
+                    </div>
+                    {member.overdueTasks > 0 && (
+                      <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-950/30 rounded">
+                        <AlertCircle className="h-4 w-4 text-orange-500" />
+                        <div>
+                          <p className="text-muted-foreground text-xs">Quá hạn</p>
+                          <p className="font-semibold text-orange-600">{member.overdueTasks}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

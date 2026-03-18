@@ -141,7 +141,7 @@ export default function SignupPage() {
         {/* Footer */}
         <div className="relative z-10">
           <p className="text-white/60 text-sm">
-            © 2024 CG SoftWare. All rights reserved.
+            © 2026 CG SoftWare. All rights reserved.
           </p>
         </div>
       </div>

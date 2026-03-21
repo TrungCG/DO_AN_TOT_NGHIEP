@@ -112,9 +112,8 @@ class IsCommentOrAttachmentOwner(BasePermission):
         is_author = user == author_or_uploader
         if request.method in SAFE_METHODS:
             return is_owner or is_member
-        if request.method == 'DELETE' and is_owner:
-            return True
-        return is_author
+        # Sửa/xóa: chỉ người bình luận hoặc chủ dự án (admin đã xử lý ở trên)
+        return is_author or is_owner
 
 
 # Phân quyền bình luận trên task

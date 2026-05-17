@@ -17,6 +17,14 @@ app.conf.beat_schedule = {
         'task': 'API.tasks.check_overdue_tasks_periodic',
         'schedule': crontab(minute=0),  # Mỗi giờ
     },
+    'send-today-task-reminders': {
+        'task': 'API.tasks.send_today_task_reminders',
+        'schedule': crontab(hour=5, minute=0),  # Mỗi sáng 5:00
+    },
+    'send-tomorrow-task-reminders': {
+        'task': 'API.tasks.send_tomorrow_task_reminders',
+        'schedule': crontab(hour=5, minute=0),  # Mỗi sáng 5:00
+    },
 }
 
 app.conf.timezone = 'Asia/Ho_Chi_Minh'

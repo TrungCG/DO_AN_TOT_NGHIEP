@@ -400,3 +400,114 @@ Hệ thống Quản lý Công việc
                                        'emails/member_removed.html', context)
     except Exception:
         return send_notification_email(removed_user.email, subject, message)
+
+
+def _get_priority_class(task):
+    """Trả về CSS class dựa trên priority của task."""
+    priority_map = {'HIGH': 'high', 'MEDIUM': 'medium', 'LOW': 'low'}
+    return priority_map.get(task.priority, 'low')
+
+
+def send_task_due_today_reminder(user, project_tasks, personal_tasks, today_date_str):
+    """
+    Gửi email nhắc nhở công việc đến hạn hôm nay.
+    Bao gồm cả task dự án được giao và task cá nhân.
+    """
+    if not user.email:
+        return False
+
+    total = len(project_tasks) + len(personal_tasks)
+    subject = f"[Nhắc việc] Bạn có {total} công việc cần hoàn thành hôm nay ({today_date_str})"
+
+    project_items = [{
+        'task': t,
+        'assignee': t.assignee.username if t.assignee else "Chưa phân công",
+        'priority': t.get_priority_display(),
+        'priority_class': _get_priority_class(t),
+    } for t in project_tasks]
+
+    personal_items = [{
+        'task': t,
+        'priority': t.get_priority_display(),
+        'priority_class': _get_priority_class(t),
+        'status': t.get_status_display(),
+    } for t in personal_tasks]
+
+    # Plain text fallback
+    lines = [f"Xin chào {user.username},\n", f"Bạn có {total} công việc cần hoàn thành hôm nay ({today_date_str}):\n"]
+    if project_tasks:
+        lines.append("--- Công việc dự án ---")
+        for t in project_tasks:
+            lines.append(f"  - {t.title} (Dự án: {t.project.name})")
+    if personal_tasks:
+        lines.append("--- Công việc cá nhân ---")
+        for t in personal_tasks:
+            lines.append(f"  - {t.title}")
+    lines.append("\nVui lòng đăng nhập hệ thống để cập nhật tiến độ.\nHệ thống Quản lý Công việc")
+    message = "\n".join(lines)
+
+    context = {
+        'user': user,
+        'today_date': today_date_str,
+        'total_tasks': total,
+        'project_tasks': project_items,
+        'personal_tasks': personal_items,
+    }
+
+    try:
+        return send_notification_email(user.email, subject, message,
+                                       'emails/task_due_today.html', context)
+    except Exception:
+        return send_notification_email(user.email, subject, message)
+
+
+def send_task_due_tomorrow_reminder(user, project_tasks, personal_tasks, tomorrow_date_str):
+    """
+    Gửi email nhắc nhở công việc đến hạn ngày mai.
+    Bao gồm cả task dự án được giao và task cá nhân.
+    """
+    if not user.email:
+        return False
+
+    total = len(project_tasks) + len(personal_tasks)
+    subject = f"[Nhắc việc] Bạn có {total} công việc cần hoàn thành ngày mai ({tomorrow_date_str})"
+
+    project_items = [{
+        'task': t,
+        'assignee': t.assignee.username if t.assignee else "Chưa phân công",
+        'priority': t.get_priority_display(),
+        'priority_class': _get_priority_class(t),
+    } for t in project_tasks]
+
+    personal_items = [{
+        'task': t,
+        'priority': t.get_priority_display(),
+        'priority_class': _get_priority_class(t),
+        'status': t.get_status_display(),
+    } for t in personal_tasks]
+
+    lines = [f"Xin chào {user.username},\n", f"Bạn có {total} công việc cần hoàn thành ngày mai ({tomorrow_date_str}):\n"]
+    if project_tasks:
+        lines.append("--- Công việc dự án ---")
+        for t in project_tasks:
+            lines.append(f"  - {t.title} (Dự án: {t.project.name})")
+    if personal_tasks:
+        lines.append("--- Công việc cá nhân ---")
+        for t in personal_tasks:
+            lines.append(f"  - {t.title}")
+    lines.append("\nHãy chuẩn bị và lên kế hoạch để hoàn thành đúng hạn!\nHệ thống Quản lý Công việc")
+    message = "\n".join(lines)
+
+    context = {
+        'user': user,
+        'tomorrow_date': tomorrow_date_str,
+        'total_tasks': total,
+        'project_tasks': project_items,
+        'personal_tasks': personal_items,
+    }
+
+    try:
+        return send_notification_email(user.email, subject, message,
+                                       'emails/task_due_tomorrow.html', context)
+    except Exception:
+        return send_notification_email(user.email, subject, message)

@@ -213,6 +213,7 @@ export function CreateTaskDialog({
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
+                        disabled={{ before: new Date() }}
                         initialFocus
                       />
                     </PopoverContent>

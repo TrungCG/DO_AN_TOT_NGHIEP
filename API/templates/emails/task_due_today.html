@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #dc3545; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f8f9fa; padding: 20px; border: 1px solid #ddd; }
+        .task-list { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .task-item { padding: 12px 0; border-bottom: 1px solid #eee; }
+        .task-item:last-child { border-bottom: none; }
+        .task-title { font-weight: bold; color: #333; font-size: 15px; }
+        .task-meta { color: #666; font-size: 13px; margin-top: 4px; }
+        .task-meta span { margin-right: 15px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; color: white; }
+        .badge-high { background: #dc3545; }
+        .badge-medium { background: #fd7e14; }
+        .badge-low { background: #28a745; }
+        .section-title { font-weight: bold; color: #495057; font-size: 14px; margin: 15px 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #dc3545; }
+        .footer { text-align: center; padding: 15px; color: #666; font-size: 12px; }
+        .count-badge { background: #dc3545; color: white; padding: 3px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔴 Công Việc Hôm Nay Cần Hoàn Thành</h1>
+            <p style="margin: 5px 0 0 0; font-size: 14px;">{{ today_date }}</p>
+        </div>
+        <div class="content">
+            <p>Xin chào <strong>{{ user.username }}</strong>,</p>
+            <p>Bạn có <span class="count-badge">{{ total_tasks }}</span> công việc cần hoàn thành hôm nay:</p>
+
+            {% if project_tasks %}
+            <div class="section-title">📋 Công việc dự án ({{ project_tasks|length }})</div>
+            <div class="task-list">
+                {% for item in project_tasks %}
+                <div class="task-item">
+                    <div class="task-title">{{ item.task.title }}</div>
+                    <div class="task-meta">
+                        <span>📁 {{ item.task.project.name }}</span>
+                        <span>👤 {{ item.assignee }}</span>
+                        <span class="badge badge-{{ item.priority_class }}">{{ item.priority }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if personal_tasks %}
+            <div class="section-title">📌 Công việc cá nhân ({{ personal_tasks|length }})</div>
+            <div class="task-list">
+                {% for item in personal_tasks %}
+                <div class="task-item">
+                    <div class="task-title">{{ item.task.title }}</div>
+                    <div class="task-meta">
+                        <span class="badge badge-{{ item.priority_class }}">{{ item.priority }}</span>
+                        <span>{{ item.status }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <p style="margin-top: 15px;">Vui lòng đăng nhập hệ thống để cập nhật tiến độ công việc.</p>
+        </div>
+        <div class="footer">
+            <p>Email này được gửi tự động từ Hệ thống Quản lý Công việc</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -852,6 +852,7 @@ export function JiraListView({
                         mode="single"
                         selected={task.due_date ? new Date(task.due_date) : undefined}
                         onSelect={(date) => handleDueDateChange(task, date)}
+                        disabled={{ before: new Date() }}
                         initialFocus
                       />
                       {task.due_date && (
@@ -1290,6 +1291,7 @@ export function JiraListView({
                           mode="single"
                           selected={selectedTask.due_date ? new Date(selectedTask.due_date) : undefined}
                           onSelect={(date) => handleDueDateChange(selectedTask, date)}
+                          disabled={{ before: new Date() }}
                           initialFocus
                         />
                       </PopoverContent>

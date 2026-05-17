@@ -692,6 +692,7 @@ export function TaskDetailModal({
                         due_date: date ? date.toISOString() : null,
                       })
                     }
+                    disabled={{ before: new Date() }}
                     initialFocus
                   />
                 </PopoverContent>

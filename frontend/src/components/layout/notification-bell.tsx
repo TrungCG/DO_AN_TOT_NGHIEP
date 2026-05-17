@@ -47,6 +47,20 @@ export function NotificationBell() {
         }
       }
 
+      // Translate reminder notification titles
+      const todayMatch = title.match(/\[NHẮC HÔM NAY\] (.+)/);
+      if (todayMatch) {
+        title = `[TODAY] ${todayMatch[1]}`;
+      }
+      const tomorrowMatch = title.match(/\[NHẮC NGÀY MAI\] (.+)/);
+      if (tomorrowMatch) {
+        title = `[TOMORROW] ${tomorrowMatch[1]}`;
+      }
+      const overdueMatch = title.match(/\[QUÁ HẠN\] (.+)/);
+      if (overdueMatch) {
+        title = `[OVERDUE] ${overdueMatch[1]}`;
+      }
+
       // Translate message patterns
       // Pattern: "Bạn vừa được {user} giao công việc '{task}' trong dự án '{project}'."
       const assignMatch = message.match(/Bạn vừa được (.+) giao công việc '(.+)' trong dự án '(.+)'\./);
@@ -128,6 +142,10 @@ export function NotificationBell() {
       } else {
         router.push(`/projects/${notification.project}`);
       }
+    } else if (notification.title.includes('[NHẮC HÔM NAY]') || notification.title.includes('[NHẮC NGÀY MAI]')) {
+      // Reminder notifications - navigate to dashboard
+      setOpen(false);
+      router.push('/dashboard');
     }
   };
 
@@ -177,6 +195,8 @@ export function NotificationBell() {
             <div className="divide-y">
               {notifications.map((notification) => {
                 const { title, message } = translateNotification(notification);
+                const isReminder = notification.title.includes('[NHẮC HÔM NAY]') || notification.title.includes('[NHẮC NGÀY MAI]');
+                const isClickable = !!notification.project || isReminder;
                 return (
                 <button
                   key={notification.id}
@@ -184,10 +204,10 @@ export function NotificationBell() {
                     "w-full p-4 text-left hover:bg-muted/50 transition-colors cursor-pointer",
                     !notification.is_read &&
                       "bg-blue-50/50 dark:bg-blue-950/20",
-                    notification.project && "hover:shadow-md"
+                    isClickable && "hover:shadow-md"
                   )}
                   onClick={() => handleNotificationClick(notification)}
-                  disabled={!notification.project}
+                  disabled={!isClickable}
                 >
                   <div className="flex items-start gap-3">
                     <div

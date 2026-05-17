@@ -38,18 +38,11 @@ class Task(models.Model):
     priority = models.CharField(max_length=4, choices=Priority.choices, default=Priority.MEDIUM, verbose_name="Độ ưu tiên")
     start_date = models.DateTimeField(null=True, blank=True, verbose_name="Ngày bắt đầu")
     due_date = models.DateTimeField(null=True, blank=True, verbose_name="Ngày hết hạn")
-    
-    # --- CẬP NHẬT QUAN TRỌNG ---
-    # 1. project cho phép null (cho task cá nhân)
     project = models.ForeignKey(Project, related_name='tasks', on_delete=models.CASCADE, verbose_name="Dự án", null=True, blank=True)
     
-    # 2. Cờ đánh dấu task cá nhân
+    # đánh dấu task cá nhân
     is_personal = models.BooleanField(default=False, verbose_name="Là việc cá nhân")
-
-    # 3. Người tạo (Bắt buộc để quản lý quyền task cá nhân)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='created_tasks', on_delete=models.CASCADE, verbose_name="Người tạo")
-    # ---------------------------
-
     assignee = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='assigned_tasks', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Người được giao")    
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
